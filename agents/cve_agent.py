@@ -70,7 +70,7 @@ IMPORTANT:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        provider="groq"  # Gemini for keyword extraction
+        provider="groq",  # Gemini for keyword extraction
     )
 
     try:
@@ -79,7 +79,7 @@ IMPORTANT:
         keywords = parsed.get("keywords", [])
         pub_start_date = parsed.get("pub_start_date")
         pub_end_date = parsed.get("pub_end_date")
-        
+
         # Normalizar a lista de strings
         return {
             "keywords": [str(k).strip() for k in keywords if str(k).strip()],
@@ -120,10 +120,10 @@ def run_cve_agent(
     for kw in keywords:
         try:
             cves = search_cves(
-                kw, 
+                kw,
                 max_results=3,
                 pub_start_date=pub_start_date,
-                pub_end_date=pub_end_date
+                pub_end_date=pub_end_date,
             )
         except Exception as e:
             # We don't want to break the flow due to network or rate-limit issues
@@ -177,14 +177,14 @@ def _validate_cve_relevance(
         "3) The CVE publication date is reasonable for the software mentioned. "
         "CRITICAL: Ancient CVEs (from 1999-2005) are almost NEVER relevant to modern incidents unless explicitly justified."
     )
-    
+
     user_prompt = f"""
 Incident description:
 {incident_text}
 
 CVE to validate:
-ID: {cve.get('id')}
-Description: {cve.get('description', '')[:500]}
+ID: {cve.get("id")}
+Description: {cve.get("description", "")[:500]}
 
 Is this CVE relevant to the incident? Answer with ONLY a JSON:
 
@@ -193,16 +193,16 @@ Is this CVE relevant to the incident? Answer with ONLY a JSON:
   "reason": "Brief explanation"
 }}
 """
-    
+
     try:
         response = call_llm(
             [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            provider="groq"
+            provider="groq",
         )
-        
+
         json_str = extract_json_block(response)
         parsed = json.loads(json_str)
         return parsed.get("relevant", False)

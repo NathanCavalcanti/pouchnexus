@@ -3,6 +3,7 @@
 from typing import Dict, Optional, Any
 from pydantic import BaseModel
 
+
 class SOCState(BaseModel):
     """
     Global state object shared across all agents in the SOC pipeline.

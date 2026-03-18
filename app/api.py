@@ -1,5 +1,4 @@
 import re
-import html
 from typing import Any, Dict, List, Optional
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, status
@@ -60,7 +59,11 @@ app.add_middleware(
 
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
 if os.path.isdir(FRONTEND_DIST):
-    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
+    app.mount(
+        "/assets",
+        StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")),
+        name="assets",
+    )
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_frontend(full_path: str):
@@ -78,18 +81,22 @@ def sanitize_string(v: Any) -> Any:
         v = v.strip()
         # Escape HTML only if we are displaying raw data in UI without a renderer
         # (IncidentPanel.jsx renders markdown, so we might want to be careful)
-        # v = html.escape(v) 
+        # v = html.escape(v)
     return v
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Pydantic Models (with Sanitization)
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class SanitizedBase(BaseModel):
     """Base model that automatically sanitizes all string fields."""
+
     @validator("*", pre=True)
     def sanitize_fields(cls, v):
         return sanitize_string(v)
+
 
 class ManualIncidentRequest(SanitizedBase):
     incident: str = Field(..., min_length=10, max_length=50000)
@@ -105,6 +112,7 @@ class ManualIncidentRequest(SanitizedBase):
 
 class SnortWebhookPayload(SanitizedBase):
     """Accept Snort / Suricata alert format."""
+
     alert: Optional[str] = None
     message: Optional[str] = None
     src_ip: Optional[str] = None
@@ -116,6 +124,7 @@ class SnortWebhookPayload(SanitizedBase):
 
 class WazuhWebhookPayload(SanitizedBase):
     """Accept Wazuh alert format."""
+
     rule: Optional[Dict[str, Any]] = None
     agent: Optional[Dict[str, Any]] = None
     data: Optional[Dict[str, Any]] = None
@@ -125,6 +134,7 @@ class WazuhWebhookPayload(SanitizedBase):
 
 class GenericWebhookPayload(SanitizedBase):
     """Flexible JSON for n8n, custom scripts, etc."""
+
     text: Optional[str] = None
     log: Optional[str] = None
     alert: Optional[str] = None
@@ -134,8 +144,10 @@ class GenericWebhookPayload(SanitizedBase):
     skip_analysis: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
 
+
 class SettingsKeys(BaseModel):
     """Model for saving API keys via settings."""
+
     groq: Optional[str] = None
     gemini: Optional[str] = None
     nvd: Optional[str] = None
@@ -147,21 +159,25 @@ class SettingsKeys(BaseModel):
 # Background task
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _run_analysis(incident_id: str, incident_text: str) -> None:
     """Runs the LangGraph multi-agent pipeline synchronously in a thread pool."""
     update_incident(incident_id, {"status": STATUS_ANALYZING})
     try:
         graph = create_graph()
         output = graph.invoke({"input_text": incident_text})
-        update_incident(incident_id, {
-            "status": STATUS_COMPLETED,
-            "iocs": output.get("iocs"),
-            "ttps": output.get("ttps"),
-            "cves": output.get("cves"),
-            "investigation_plan": output.get("investigation_plan"),
-            "report": output.get("report"),
-            "report_text": output.get("report_text"),
-        })
+        update_incident(
+            incident_id,
+            {
+                "status": STATUS_COMPLETED,
+                "iocs": output.get("iocs"),
+                "ttps": output.get("ttps"),
+                "cves": output.get("cves"),
+                "investigation_plan": output.get("investigation_plan"),
+                "report": output.get("report"),
+                "report_text": output.get("report_text"),
+            },
+        )
     except Exception as exc:
         update_incident(incident_id, {"status": STATUS_FAILED, "error": str(exc)})
 
@@ -169,6 +185,7 @@ def _run_analysis(incident_id: str, incident_text: str) -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 # Health check
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @app.get("/api/health", tags=["system"])
 async def health_check():
@@ -178,6 +195,7 @@ async def health_check():
 # ──────────────────────────────────────────────────────────────────────────────
 # Dashboard Stats
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @app.get("/api/v1/stats", tags=["dashboard"])
 async def dashboard_stats():
@@ -189,6 +207,7 @@ async def dashboard_stats():
 # Settings
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 @app.get("/api/v1/settings/keys", tags=["settings"])
 async def get_keys():
     """Returns current keys from .env without masking so they can be edited."""
@@ -199,7 +218,8 @@ async def get_keys():
         "gemini": env_vars.get("GEMINI_API_KEY", ""),
         "nvd": env_vars.get("NVD_API_KEY", ""),
         "virustotal": env_vars.get("VIRUSTOTAL_API_KEY", ""),
-        "debug_logging": env_vars.get("DEBUG_LOGGING_ENABLED", "false").lower() == "true",
+        "debug_logging": env_vars.get("DEBUG_LOGGING_ENABLED", "false").lower()
+        == "true",
     }
 
 
@@ -208,8 +228,8 @@ async def update_keys(keys: SettingsKeys):
     """Updates the .env file with the provided keys."""
     env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
     if not os.path.exists(env_path):
-        open(env_path, 'a').close()
-        
+        open(env_path, "a").close()
+
     if keys.groq is not None:
         set_key(env_path, "GROQ_API_KEY", keys.groq)
     if keys.gemini is not None:
@@ -219,14 +239,17 @@ async def update_keys(keys: SettingsKeys):
     if keys.virustotal is not None:
         set_key(env_path, "VIRUSTOTAL_API_KEY", keys.virustotal)
     if keys.debug_logging is not None:
-        set_key(env_path, "DEBUG_LOGGING_ENABLED", "true" if keys.debug_logging else "false")
-        
+        set_key(
+            env_path, "DEBUG_LOGGING_ENABLED", "true" if keys.debug_logging else "false"
+        )
+
     return {"status": "success", "message": "Keys updated in .env"}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Incidents CRUD
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @app.get("/api/v1/incidents", tags=["incidents"])
 async def list_incidents_endpoint(
@@ -237,10 +260,10 @@ async def list_incidents_endpoint(
 ) -> List[Dict[str, Any]]:
     """Returns a list of incidents, newest first."""
     return list_incidents(
-        limit=limit, 
-        status=status_filter, 
+        limit=limit,
+        status=status_filter,
         source=source_filter,
-        attack_type=attack_filter
+        attack_type=attack_filter,
     )
 
 
@@ -253,12 +276,18 @@ async def get_incident_endpoint(incident_id: str) -> Dict[str, Any]:
     return record
 
 
-@app.delete("/api/v1/incidents/{incident_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["incidents"])
+@app.delete(
+    "/api/v1/incidents/{incident_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["incidents"],
+)
 async def delete_incident_endpoint(incident_id: str):
     """Deletes an incident by ID."""
     success = delete_incident(incident_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Incident not found or already deleted")
+        raise HTTPException(
+            status_code=404, detail="Incident not found or already deleted"
+        )
     return None
 
 
@@ -282,19 +311,22 @@ async def _run_lightweight_enrichment(incident_id: str, text: str):
     """
     from integrations.virustotal_client import get_ip_report
     from app.database import STATUS_COMPLETED
-    
+
     # Simple IP regex
-    ip_match = re.search(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', text)
+    ip_match = re.search(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", text)
     if not ip_match:
-        update_incident(incident_id, {
-            "status": STATUS_COMPLETED,
-            "report_text": "Incident logged. AI Analysis skipped. No IP found for automated enrichment."
-        })
+        update_incident(
+            incident_id,
+            {
+                "status": STATUS_COMPLETED,
+                "report_text": "Incident logged. AI Analysis skipped. No IP found for automated enrichment.",
+            },
+        )
         return
 
     ip = ip_match.group(0)
     vt_data = get_ip_report(ip)
-    
+
     # Structure for the UI (IncidentPanel.jsx looks for this)
     vt_ui_result = {
         "ip": ip,
@@ -303,15 +335,15 @@ async def _run_lightweight_enrichment(incident_id: str, text: str):
         "reputation": vt_data.get("reputation", 0),
         "country": vt_data.get("country", "Unknown"),
         "as_owner": vt_data.get("as_owner", "Unknown"),
-        "permalink": vt_data.get("permalink", "")
+        "permalink": vt_data.get("permalink", ""),
     }
-    
+
     if "error" in vt_data and not vt_data.get("permalink"):
         report = f"Incident logged. Scan from {ip}.\nVirusTotal lookup failed: {vt_data['error']}"
     else:
         malicious = vt_ui_result["malicious"]
         total = vt_ui_result["total"]
-        
+
         report = "### 🔍 Automated IP Enrichment (No AI Analysis)\n\n"
         report += f"**IP Detected:** {ip}\n"
         report += f"**VT Reputation:** {malicious}/{total} engines flagged this IP.\n"
@@ -319,19 +351,20 @@ async def _run_lightweight_enrichment(incident_id: str, text: str):
         if malicious > 0:
             report += f"⚠️ **Warning:** This IP has been flagged as malicious by {malicious} security vendors.\n\n"
 
-    update_incident(incident_id, {
-        "status": STATUS_COMPLETED,
-        "report_text": report,
-        "iocs": {
-            "ips": [ip],
-            "virustotal_ip_results": [vt_ui_result]
-        }
-    })
+    update_incident(
+        incident_id,
+        {
+            "status": STATUS_COMPLETED,
+            "report_text": report,
+            "iocs": {"ips": [ip], "virustotal_ip_results": [vt_ui_result]},
+        },
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Manual analysis (replaces old CLI workflow)
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @app.post("/api/v1/analyze", status_code=202, tags=["incidents"])
 @limiter.limit("5/minute")
@@ -361,9 +394,12 @@ async def analyze_incident(
 # Ingestion Webhooks (Snort, Wazuh, Generic/n8n)
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 @app.post("/api/v1/ingest/snort", status_code=202, tags=["ingestion"])
 @limiter.limit("60/minute")
-async def ingest_snort(request: Request, payload: SnortWebhookPayload, background_tasks: BackgroundTasks):
+async def ingest_snort(
+    request: Request, payload: SnortWebhookPayload, background_tasks: BackgroundTasks
+):
     """
     Webhook endpoint for Snort / Suricata JSON alerts.
     Configure Snort to POST to: http://<host>:8000/api/v1/ingest/snort
@@ -384,10 +420,10 @@ async def ingest_snort(request: Request, payload: SnortWebhookPayload, backgroun
 
     incident_text = "\n".join(lines) if lines else str(payload.dict())
     incident_id = create_incident(
-        raw_text=incident_text, 
-        source="snort", 
+        raw_text=incident_text,
+        source="snort",
         severity=payload.severity or "medium",
-        attack_type="Network IDS"
+        attack_type="Network IDS",
     )
     background_tasks.add_task(_run_analysis, incident_id, incident_text)
     return {"incident_id": incident_id, "status": "pending"}
@@ -395,7 +431,9 @@ async def ingest_snort(request: Request, payload: SnortWebhookPayload, backgroun
 
 @app.post("/api/v1/ingest/wazuh", status_code=202, tags=["ingestion"])
 @limiter.limit("60/minute")
-async def ingest_wazuh(request: Request, payload: WazuhWebhookPayload, background_tasks: BackgroundTasks):
+async def ingest_wazuh(
+    request: Request, payload: WazuhWebhookPayload, background_tasks: BackgroundTasks
+):
     """
     Webhook endpoint for Wazuh alerts.
     In Wazuh Manager, configure a custom integration to POST to this URL.
@@ -416,10 +454,10 @@ async def ingest_wazuh(request: Request, payload: WazuhWebhookPayload, backgroun
 
     incident_text = "\n".join(lines) if lines else str(payload.dict())
     incident_id = create_incident(
-        raw_text=incident_text, 
-        source="wazuh", 
+        raw_text=incident_text,
+        source="wazuh",
         severity=payload.severity or "medium",
-        attack_type="Endpoint Alert"
+        attack_type="Endpoint Alert",
     )
     background_tasks.add_task(_run_analysis, incident_id, incident_text)
     return {"incident_id": incident_id, "status": "pending"}
@@ -427,42 +465,56 @@ async def ingest_wazuh(request: Request, payload: WazuhWebhookPayload, backgroun
 
 @app.post("/api/v1/ingest/generic", status_code=202, tags=["ingestion"])
 @limiter.limit("60/minute")
-async def ingest_generic(request: Request, payload: GenericWebhookPayload, background_tasks: BackgroundTasks):
+async def ingest_generic(
+    request: Request, payload: GenericWebhookPayload, background_tasks: BackgroundTasks
+):
     """
     Flexible webhook for n8n, custom scripts, SIEM exports, etc.
     Accepts any JSON with a 'text', 'log', or 'alert' field.
     """
     incident_text = payload.text or payload.log or payload.alert or str(payload.dict())
     source = payload.source_name or "generic_webhook"
-    
+
     incident_id = create_incident(
-        raw_text=incident_text, 
-        source=source, 
+        raw_text=incident_text,
+        source=source,
         severity=payload.severity or "unknown",
-        attack_type=payload.attack_type or "Log Analysis"
+        attack_type=payload.attack_type or "Log Analysis",
     )
-    
+
     # Skip AI analysis if requested (e.g. for simple port scans)
     if payload.skip_analysis:
-        background_tasks.add_task(_run_lightweight_enrichment, incident_id, incident_text)
+        background_tasks.add_task(
+            _run_lightweight_enrichment, incident_id, incident_text
+        )
     else:
         background_tasks.add_task(_run_analysis, incident_id, incident_text)
-        
-    return {"incident_id": incident_id, "status": "pending" if not payload.skip_analysis else "completed"}
+
+    return {
+        "incident_id": incident_id,
+        "status": "pending" if not payload.skip_analysis else "completed",
+    }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Enrichment: VirusTotal, CVE (NVD), MITRE ATT&CK
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class MitreAnalyzeRequest(SanitizedBase):
-    text: str = Field(..., min_length=10, max_length=20000, description="Event or log text to map to MITRE")
+    text: str = Field(
+        ...,
+        min_length=10,
+        max_length=20000,
+        description="Event or log text to map to MITRE",
+    )
 
 
 @app.get("/api/v1/enrichment/virustotal/hash/{file_hash}", tags=["enrichment"])
 async def vt_hash(file_hash: str):
     """Query VirusTotal for a file hash (MD5, SHA1, SHA256)."""
     from integrations.virustotal_client import get_file_report
+
     return get_file_report(file_hash)
 
 
@@ -470,6 +522,7 @@ async def vt_hash(file_hash: str):
 async def vt_ip(ip: str):
     """Query VirusTotal for an IP address reputation."""
     from integrations.virustotal_client import get_ip_report
+
     return get_ip_report(ip)
 
 
@@ -477,6 +530,7 @@ async def vt_ip(ip: str):
 async def vt_domain(domain: str):
     """Query VirusTotal for a domain reputation."""
     from integrations.virustotal_client import get_domain_report
+
     return get_domain_report(domain)
 
 
@@ -484,6 +538,7 @@ async def vt_domain(domain: str):
 async def vt_url(payload: Dict[str, str]):
     """Scan a URL with VirusTotal."""
     from integrations.virustotal_client import scan_url
+
     url = payload.get("url", "")
     if not url:
         raise HTTPException(status_code=400, detail="url field required")
@@ -491,12 +546,15 @@ async def vt_url(payload: Dict[str, str]):
 
 
 @app.get("/api/v1/enrichment/cve", tags=["enrichment"])
-async def search_cve(q: str = Query(..., min_length=2, description="CVE ID or keyword")):
+async def search_cve(
+    q: str = Query(..., min_length=2, description="CVE ID or keyword"),
+):
     """
     Search NVD for CVEs by keyword or CVE-ID.
     Examples: ?q=log4j  or  ?q=CVE-2023-44487
     """
     from integrations.nvd_client import search_cves
+
     try:
         results = search_cves(keyword=q, max_results=10)
         return {"query": q, "results": results}
@@ -508,9 +566,13 @@ async def search_cve(q: str = Query(..., min_length=2, description="CVE ID or ke
 async def lookup_mitre(technique_id: str):
     """Lookup a single MITRE ATT&CK technique by ID (e.g. T1059.001)."""
     from integrations.mitre_local_db import get_technique_by_id
+
     result = get_technique_by_id(technique_id.upper())
     if not result:
-        raise HTTPException(status_code=404, detail=f"Technique {technique_id} not found in MITRE database")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Technique {technique_id} not found in MITRE database",
+        )
     # Trim the raw STIX blob — send only useful fields
     return {
         "id": result["id"],
@@ -522,7 +584,9 @@ async def lookup_mitre(technique_id: str):
 
 
 @app.post("/api/v1/enrichment/mitre/analyze", tags=["enrichment"])
-async def mitre_analyze(payload: MitreAnalyzeRequest, background_tasks: BackgroundTasks):
+async def mitre_analyze(
+    payload: MitreAnalyzeRequest, background_tasks: BackgroundTasks
+):
     """
     AI TTP Mapper: sends text through the MITRE agent (LLM + local DB validation).
     Uses BackgroundTasks so the response is not blocked by the LLM call.

@@ -18,18 +18,21 @@ logger = logging.getLogger("soc_multiagent")
 logger.setLevel(logging.DEBUG if DEBUG_LOGGING_ENABLED else logging.INFO)
 
 # Formatter
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s')
+formatter = logging.Formatter(
+    "%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
+)
 
 # Only setup file handler if debug is enabled
 if DEBUG_LOGGING_ENABLED and not logger.handlers:
     # Daily log file
     log_file = os.path.join(LOGS_DIR, f"debug_{datetime.now().strftime('%Y%m%d')}.log")
-    
-    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
-    
+
     logger.addHandler(file_handler)
+
 
 def debug_log(message: str, data: any = None):
     """
@@ -37,22 +40,22 @@ def debug_log(message: str, data: any = None):
     """
     if not DEBUG_LOGGING_ENABLED:
         return
-        
+
     # caller_frame = inspect.currentframe().f_back
     # Extract linenumber for context (can be added to log if needed)
     # _lineno = caller_frame.f_lineno
-    
+
     log_msg = f"{message}"
     if data is not None:
         if isinstance(data, str):
             log_msg += f"\n{data}"
         else:
             import json
+
             try:
                 log_msg += f"\n{json.dumps(data, indent=2, default=str)}"
             except Exception:
                 log_msg += f"\n{str(data)}"
-                
+
     # Modify record dynamically or just build string
     logger.debug(log_msg)
-

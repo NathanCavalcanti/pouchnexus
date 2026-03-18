@@ -26,7 +26,7 @@ def search_cves(
     """
     Searches for CVEs in NVD using keywordSearch.
     Returns a list of simplified dicts: id, cvss, description.
-    
+
     Args:
         keyword: Keyword to search for
         max_results: Maximum number of results to return
@@ -34,12 +34,12 @@ def search_cves(
         pub_end_date: End date for publication date filter (ISO 8601 format: YYYY-MM-DDTHH:MM:SS.000)
     """
     from datetime import datetime
-    
+
     params = {
         "keywordSearch": keyword,
         "resultsPerPage": max_results,
     }
-    
+
     # NVD API has a strict limit of 120 days for date ranges.
     # We only apply date filters if explicitly provided AND within the limit.
     # Otherwise, we rely on keyword search (which returns most recent by default).
@@ -48,7 +48,7 @@ def search_cves(
             start_dt = datetime.strptime(pub_start_date, "%Y-%m-%dT%H:%M:%S.%f")
             end_dt = datetime.strptime(pub_end_date, "%Y-%m-%dT%H:%M:%S.%f")
             delta = end_dt - start_dt
-            
+
             if delta.days <= 120:
                 params["pubStartDate"] = pub_start_date
                 params["pubEndDate"] = pub_end_date
@@ -58,9 +58,7 @@ def search_cves(
             pass
 
     api_key = _get_nvd_api_key()
-    headers = {
-        "User-Agent": "SOC-MultiAgent-Assistant/1.0"
-    }
+    headers = {"User-Agent": "SOC-MultiAgent-Assistant/1.0"}
     if api_key:
         headers["apiKey"] = api_key
 

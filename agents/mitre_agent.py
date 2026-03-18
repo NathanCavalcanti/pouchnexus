@@ -80,7 +80,7 @@ Return ONLY a valid JSON with the following structure:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        provider="groq"  # Groq for technique extraction
+        provider="groq",  # Groq for technique extraction
     )
 
     try:

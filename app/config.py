@@ -41,6 +41,7 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL")
 if GEMINI_API_KEY:
     try:
         import google.generativeai as genai
+
         genai.configure(api_key=GEMINI_API_KEY)
     except ImportError:
         print("[WARNING] google-generativeai not installed. Gemini fallback disabled.")
@@ -62,17 +63,17 @@ def call_llm(
 ) -> str:
     """
     Wraps LLM calls (Groq or Gemini) with automatic fallback and error handling.
-    
+
     Args:
         messages: List of messages in format [{"role": "system|user|assistant", "content": "..."}]
         provider: "groq" or "gemini" (default: "groq")
         model: Specific model to use (if None, uses provider default)
         temperature: Generation temperature
         max_tokens: Max output tokens
-    
+
     Returns:
         LLM response as string
-        
+
     Raises:
         RuntimeError: If both Groq and Gemini fail
     """
@@ -120,9 +121,7 @@ def _call_groq(
             f"LLM_API_ERROR: Groq API error for model '{model}': {e}"
         ) from e
     except GroqError as e:
-        raise RuntimeError(
-            f"LLM_ERROR: Error calling Groq model '{model}': {e}"
-        ) from e
+        raise RuntimeError(f"LLM_ERROR: Error calling Groq model '{model}': {e}") from e
     except Exception as e:
         raise RuntimeError(
             f"LLM_UNKNOWN_ERROR: Unexpected error calling Groq model '{model}': {e}"
@@ -137,7 +136,7 @@ def _call_gemini(
 ) -> str:
     """
     Gemini LLM call with error handling.
-    
+
     Note: Gemini does not support "system" role like OpenAI/Groq.
     We combine system + user into a single message.
     """
@@ -147,31 +146,31 @@ def _call_gemini(
         for msg in messages:
             role = msg.get("role", "")
             content = msg.get("content", "")
-            
+
             if role == "system":
                 combined_content = content + "\n\n"
             elif role == "user":
                 combined_content += content
             # Ignore "assistant" for now (not used in our agents)
-        
+
         # Create model and generate
         model_instance = genai.GenerativeModel(model)
         debug_log(f"=== GEMINI API REQUEST ({model}) ===", combined_content)
-        
+
         response = model_instance.generate_content(
             combined_content,
             generation_config=genai.GenerationConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens,
-            )
+            ),
         )
         debug_log(f"=== GEMINI API RESPONSE ({model}) ===", response.text)
         return response.text
-        
+
     except Exception as e:
         # Gemini can raise different types of errors
         error_msg = str(e).lower()
-        
+
         if "quota" in error_msg or "rate" in error_msg or "limit" in error_msg:
             raise RuntimeError(
                 f"LLM_RATE_LIMIT: Gemini model usage limit reached "
@@ -209,4 +208,3 @@ def extract_json_block(text: str) -> str:
     # 3) If there's no way to extract JSON, return text as is
     # for the caller to decide what to do.
     return text.strip()
-    

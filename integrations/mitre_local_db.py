@@ -14,11 +14,7 @@ MITRE_URL = (
 )
 
 # Path to the local file in the project
-DATA_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "data"
-    / "enterprise-attack.json"
-)
+DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "enterprise-attack.json"
 
 # In-memory structures
 _TECHNIQUES_BY_ID: Dict[str, Dict[str, Any]] = {}
@@ -30,13 +26,16 @@ _LOADED: bool = False
 # MITRE bundle download and loading
 # ---------------------------------------------------------------------------
 
+
 def _fetch_remote_bundle() -> Optional[Dict[str, Any]]:
     """
     Attempts to download the Enterprise ATT&CK bundle from GitHub.
     If there is any issue (network, GitHub, invalid JSON), returns None
     and prints a warning to the console.
     """
-    print(f"[MITRE] Attempting to download Enterprise ATT&CK from GitHub:\n        {MITRE_URL}")
+    print(
+        f"[MITRE] Attempting to download Enterprise ATT&CK from GitHub:\n        {MITRE_URL}"
+    )
     try:
         resp = requests.get(MITRE_URL, timeout=30)
         resp.raise_for_status()
@@ -51,10 +50,14 @@ def _fetch_remote_bundle() -> Optional[Dict[str, Any]]:
         return None
 
     if "objects" not in data or not isinstance(data["objects"], list):
-        print("[MITRE] Warning: downloaded JSON does not appear to be a valid ATT&CK bundle (no 'objects').")
+        print(
+            "[MITRE] Warning: downloaded JSON does not appear to be a valid ATT&CK bundle (no 'objects')."
+        )
         return None
 
-    print(f"[MITRE] Download successful from GitHub. Objects in bundle: {len(data['objects'])}")
+    print(
+        f"[MITRE] Download successful from GitHub. Objects in bundle: {len(data['objects'])}"
+    )
     return data
 
 
@@ -80,7 +83,9 @@ def _load_bundle_from_disk() -> Optional[Dict[str, Any]]:
         return None
 
     if "objects" not in data or not isinstance(data["objects"], list):
-        print("[MITRE] Warning: local copy does not appear to be a valid ATT&CK bundle (no 'objects').")
+        print(
+            "[MITRE] Warning: local copy does not appear to be a valid ATT&CK bundle (no 'objects')."
+        )
         return None
 
     print(f"[MITRE] Bundle loaded from local copy: {DATA_PATH}")
@@ -123,6 +128,7 @@ def _load_bundle() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # MITRE Index Construction (Tactics and Techniques)
 # ---------------------------------------------------------------------------
+
 
 def _load_data() -> None:
     """Loads Enterprise ATT&CK and builds in-memory indices."""
@@ -197,9 +203,7 @@ def get_technique_by_id(tech_id: str) -> Optional[Dict[str, Any]]:
     return _TECHNIQUES_BY_ID.get(tech_id)
 
 
-def enrich_techniques(
-    techniques: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
+def enrich_techniques(techniques: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Enrichment of techniques proposed by the LLM with official MITRE data.
 
@@ -262,10 +266,10 @@ def enrich_techniques(
 def validate_technique_id(tech_id: str) -> bool:
     """
     Validates if a technique ID exists in the MITRE ATT&CK database.
-    
+
     Args:
         tech_id: Technique ID (e.g., 'T1059.001')
-    
+
     Returns:
         True if the technique exists, False otherwise
     """
@@ -277,7 +281,7 @@ def get_all_technique_ids() -> List[str]:
     """
     Returns a list of all valid technique IDs in the database.
     Useful for debugging and validation.
-    
+
     Returns:
         List of technique IDs (e.g., ['T1059', 'T1059.001', ...])
     """

@@ -91,7 +91,7 @@ Return ONLY a valid JSON with the following structure:
             {"role": "user", "content": user_prompt},
         ],
         provider="groq",
-        model=GROQ_MODEL_ANALYSIS  # Analysis model for complex reasoning
+        model=GROQ_MODEL_ANALYSIS,  # Analysis model for complex reasoning
     )
 
     try:

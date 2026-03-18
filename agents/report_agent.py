@@ -25,7 +25,9 @@ def run_report_agent(
     """
 
     ioc_snippet = json.dumps(iocs, ensure_ascii=False) if iocs else "{}"
-    mitre_snippet = json.dumps(mitre_context, ensure_ascii=False) if mitre_context else "{}"
+    mitre_snippet = (
+        json.dumps(mitre_context, ensure_ascii=False) if mitre_context else "{}"
+    )
     cve_snippet = json.dumps(cve_context, ensure_ascii=False) if cve_context else "{}"
     investigation_snippet = (
         json.dumps(investigation_context, ensure_ascii=False)
@@ -151,7 +153,7 @@ Generate ONLY a valid JSON with the following structure:
             {"role": "user", "content": user_prompt},
         ],
         provider="groq",
-        model=GROQ_MODEL_ANALYSIS  # Analysis model for complex reasoning
+        model=GROQ_MODEL_ANALYSIS,  # Analysis model for complex reasoning
     )
 
     try:
@@ -234,20 +236,22 @@ def render_report_text(report: Dict[str, Any]) -> str:
         suspicious = involved_parties.get("suspicious_accounts", [])
         threat_actor = involved_parties.get("threat_actor", {})
         responders = involved_parties.get("incident_responders", [])
-        
+
         lines.append(f"  Affected Users     : {', '.join(affected) or 'N/A'}")
         lines.append(f"  Suspicious Accounts: {', '.join(suspicious) or 'N/A'}")
-        
+
         if threat_actor:
             attribution = threat_actor.get("attribution", "Unknown")
             confidence = threat_actor.get("confidence", "N/A")
             indicators = threat_actor.get("indicators", [])
-            lines.append(f"  Threat Actor       : {attribution} [Confidence: {confidence}]")
+            lines.append(
+                f"  Threat Actor       : {attribution} [Confidence: {confidence}]"
+            )
             if indicators:
                 lines.append("    Attribution Indicators:")
                 for ind in indicators:
                     lines.append(f"      - {ind}")
-        
+
         lines.append(f"  Incident Responders: {', '.join(responders) or 'N/A'}")
     else:
         lines.append("  - N/A")
@@ -287,7 +291,7 @@ def render_report_text(report: Dict[str, Any]) -> str:
             total = res.get("total", 0)
             label = res.get("threat_label", "N/A")
             verdicts = ", ".join(res.get("sandbox_verdicts", [])) or "None"
-            
+
             lines.append(f"  Hash: {h}")
             lines.append(f"    Detection: {mal}/{total}")
             lines.append(f"    Threat Label: {label}")

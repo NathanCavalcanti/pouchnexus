@@ -34,7 +34,7 @@ _db: Optional[TinyDB] = None
 def get_db() -> TinyDB:
     global _db
     if _db is None:
-        # We use direct JSONStorage instead of CachingMiddleware to ensure 
+        # We use direct JSONStorage instead of CachingMiddleware to ensure
         # that every write (insert/update) is immediately flushed to disk.
         # This prevents data loss during server reloads or forced shutdowns.
         _db = TinyDB(DB_PATH, storage=JSONStorage)
@@ -47,8 +47,12 @@ def get_incidents_table():
 
 # ── CRUD helpers ─────────────────────────────────────────────────────────────
 
+
 def create_incident(
-    raw_text: str, source: str = "manual", severity: str = "unknown", attack_type: str = "Log Analysis"
+    raw_text: str,
+    source: str = "manual",
+    severity: str = "unknown",
+    attack_type: str = "Log Analysis",
 ) -> str:
     """Creates a new incident record. Returns the incident ID."""
     incident_id = str(uuid.uuid4())
@@ -56,8 +60,8 @@ def create_incident(
 
     record = {
         "id": incident_id,
-        "source": source,            # "manual" | "webhook_snort" | "webhook_wazuh" | "n8n" …
-        "severity": severity,        # "critical" | "high" | "medium" | "low" | "unknown"
+        "source": source,  # "manual" | "webhook_snort" | "webhook_wazuh" | "n8n" …
+        "severity": severity,  # "critical" | "high" | "medium" | "low" | "unknown"
         "attack_type": attack_type,  # e.g., "Log Analysis", "Phishing", "Malware"
         "status": STATUS_PENDING,
         "created_at": now,
@@ -114,16 +118,16 @@ def list_incidents(
     """Returns incidents ordered by newest first with optional filters."""
     table = get_incidents_table()
     Incident = Query()
-    
+
     # Dynamic query building
     query = None
     if status:
-        query = (Incident.status == status)
+        query = Incident.status == status
     if source:
-        q_source = (Incident.source == source)
+        q_source = Incident.source == source
         query = (query & q_source) if query else q_source
     if attack_type:
-        q_attack = (Incident.attack_type == attack_type)
+        q_attack = Incident.attack_type == attack_type
         query = (query & q_attack) if query else q_attack
 
     if query:
@@ -140,7 +144,12 @@ def get_stats() -> Dict[str, Any]:
     """Returns summary statistics for the dashboard."""
     all_records = get_incidents_table().all()
     total = len(all_records)
-    by_status = {STATUS_PENDING: 0, STATUS_ANALYZING: 0, STATUS_COMPLETED: 0, STATUS_FAILED: 0}
+    by_status = {
+        STATUS_PENDING: 0,
+        STATUS_ANALYZING: 0,
+        STATUS_COMPLETED: 0,
+        STATUS_FAILED: 0,
+    }
     by_severity = {"critical": 0, "high": 0, "medium": 0, "low": 0, "unknown": 0}
     by_source: Dict[str, int] = {}
 
