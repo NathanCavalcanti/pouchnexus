@@ -1,11 +1,11 @@
-# 🛡️ Multi-Agent Automated SOC Analyst - Web Platform V2.1
+# 🛡️ PouchNexus - SOC Multi-Agent platform
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
 ![LangGraph](https://img.shields.io/badge/LangGraph-0.1.15+-green.svg)
 ![React](https://img.shields.io/badge/React-18+-61DAFB.svg)
-![Status](https://img.shields.io/badge/v2.1.0-Security_Update-success.svg)
+![Status](https://img.shields.io/badge/v3.2.0-Pro_Max_Redesign-success.svg)
 
-A professional, web-based **Security Operations Center (SOC) Multi-Agent AI Assistant**. This platform orchestrates specialized AI agents using **LangGraph** to automate incident triage, enrichment, and reporting.
+A professional, web-based **Security Operations Center (SOC) Multi-Agent AI Assistant**. **PouchNexus** orchestrates specialized AI agents using **LangGraph** to automate incident triage, enrichment, and reporting.
 
 ---
 
@@ -86,5 +86,5 @@ Automated via GitHub Actions:
 - **Security**: Bandit security scanning.
 - **Docker**: Automated container builds.
 
-**Version**: 2.1.0 | **Status**: Production-Ready Security Assistant
+**Version**: 3.2.0 | **Status**: Production-Ready Security Assistant (PouchNexus)
 **License**: MIT

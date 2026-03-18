@@ -1,4 +1,4 @@
-# 🛣️ Roadmap – Multi-Agent Automated SOC Analyst
+# 🛣️ Roadmap – PouchNexus SOC Multi-Agent platform
 
 ---
 

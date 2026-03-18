@@ -2,13 +2,16 @@ import { useEffect, useState, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { RefreshCw, Filter, Trash2 } from 'lucide-react'
 import { api } from '../api.js'
+import { useApp } from '../context/AppContext'
 import IncidentPanel from '../components/IncidentPanel.jsx'
+import LanguageSelector from '../components/LanguageSelector.jsx'
 
 const SOURCES  = ['all', 'manual', 'snort', 'wazuh', 'generic_webhook', 'n8n']
 const STATUSES = ['all', 'pending', 'analyzing', 'completed', 'failed']
 const ATTACK_TYPES = ['all', 'Network Scan', 'Unauthorized Access', 'Network IDS', 'Endpoint Alert', 'Log Analysis', 'Phishing', 'Malware']
 
 export default function Incidents() {
+  const { t, pref, updatePref } = useApp()
   const location = useLocation()
   const [incidents, setIncidents] = useState([])
   const [loading,   setLoading]   = useState(true)
@@ -16,7 +19,8 @@ export default function Incidents() {
   const [srcFilter, setSrcFilter] = useState('all')
   const [stFilter,  setStFilter]  = useState('all')
   const [atFilter,  setAtFilter]  = useState('all')
-  const [refreshInterval, setRefreshInterval] = useState(10000) // 10s default
+  // Using global preference instead of local state for persistence
+  const refreshInterval = pref.refreshInterval
   const [limit, setLimit] = useState(50)
   const [selectedIds, setSelectedIds] = useState(new Set())
 
@@ -129,18 +133,18 @@ export default function Incidents() {
     <>
       <div className="topbar">
         <div>
-          <div className="topbar-title">Incidents</div>
-          <div className="topbar-sub">{incidents.length} record{incidents.length !== 1 ? 's' : ''} · click any row for full analysis</div>
+          <div className="topbar-title">{t.incidents}</div>
+          <div className="topbar-sub">{incidents.length} {t.records} · {t.click_to_analyze}</div>
         </div>
         <div className="topbar-actions">
-          {/* Source filter */}
+          <LanguageSelector />
           <select
             className="form-select"
             style={{ width: 140 }}
             value={srcFilter}
             onChange={e => setSrcFilter(e.target.value)}
           >
-            {SOURCES.map(s => <option key={s} value={s}>{s === 'all' ? 'All Source' : s}</option>)}
+            {SOURCES.map(s => <option key={s} value={s}>{s === 'all' ? t.all_source : s}</option>)}
           </select>
           {/* Status filter */}
           <select
@@ -149,7 +153,7 @@ export default function Incidents() {
             value={stFilter}
             onChange={e => setStFilter(e.target.value)}
           >
-            {STATUSES.map(s => <option key={s} value={s}>{s === 'all' ? 'All Status' : s}</option>)}
+            {STATUSES.map(s => <option key={s} value={s}>{s === 'all' ? t.all_status : s}</option>)}
           </select>
           {/* Attack Type filter */}
           <select
@@ -158,19 +162,19 @@ export default function Incidents() {
             value={atFilter}
             onChange={e => setAtFilter(e.target.value)}
           >
-            {ATTACK_TYPES.map(a => <option key={a} value={a}>{a === 'all' ? 'All Attack Types' : a}</option>)}
+            {ATTACK_TYPES.map(a => <option key={a} value={a}>{a === 'all' ? t.all_attacks : a}</option>)}
           </select>
           {/* Refresh interval */}
           <select
             className="form-select"
             style={{ width: 140 }}
             value={refreshInterval}
-            onChange={e => setRefreshInterval(Number(e.target.value))}
+            onChange={e => updatePref('refreshInterval', Number(e.target.value))}
           >
-            <option value={10000}>Refresh: 10s</option>
-            <option value={30000}>Refresh: 30s</option>
-            <option value={60000}>Refresh: 1m</option>
-            <option value={0}>Refresh: Never</option>
+            <option value={10000}>{t.refresh_10s}</option>
+            <option value={30000}>{t.refresh_30s}</option>
+            <option value={60000}>{t.refresh_1m}</option>
+            <option value={0}>{t.refresh_never}</option>
           </select>
           {/* Limit selector */}
           <select
@@ -186,12 +190,12 @@ export default function Incidents() {
           </select>
           <button className="btn btn-secondary" onClick={load} disabled={loading}>
             <RefreshCw size={14} />
-            Refresh
+            {t.refresh}
           </button>
           {selectedIds.size > 0 && (
             <button className="btn btn-danger" onClick={handleBulkDelete}>
               <Trash2 size={14} />
-              Delete ({selectedIds.size})
+              {t.delete_selected} ({selectedIds.size})
             </button>
           )}
         </div>
@@ -220,12 +224,12 @@ export default function Incidents() {
                       checked={incidents.length > 0 && selectedIds.size === incidents.length}
                     />
                   </th>
-                  <th>Status</th>
-                  <th>Source</th>
-                  <th>Severity</th>
+                  <th>{t.status}</th>
+                  <th>{t.source}</th>
+                  <th>{t.severity}</th>
                   <th>Attack Type</th>
                   <th>Log Preview</th>
-                  <th>Created</th>
+                  <th>{t.created}</th>
                   <th>Updated</th>
                   <th style={{ width: 50 }}></th>
                 </tr>

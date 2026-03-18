@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { AppProvider } from './context/AppContext.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Incidents from './pages/Incidents.jsx'
@@ -12,7 +13,8 @@ import Help from './pages/Help.jsx'
 
 export default function App() {
   return (
-    <div className="app-shell">
+    <AppProvider>
+      <div className="app-shell">
       <Sidebar />
       <div className="main-content">
         <Routes>
@@ -29,5 +31,6 @@ export default function App() {
         </Routes>
       </div>
     </div>
-  )
+  </AppProvider>
+)
 }

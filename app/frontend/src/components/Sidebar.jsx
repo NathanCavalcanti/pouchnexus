@@ -1,22 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import {
-  LayoutDashboard, ShieldAlert, Plus, BookOpen, Settings, Shield,
-  Bug, FileWarning, Swords, HelpCircle
-} from 'lucide-react'
-
-const mainNav = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/incidents', icon: ShieldAlert,     label: 'Incidents' },
-  { to: '/submit',    icon: Plus,            label: 'New Incident' },
-  { to: '/playbooks', icon: BookOpen,        label: 'Playbooks' },
-  { to: '/help',      icon: HelpCircle,      label: 'Help' },
-]
-
-const enrichNav = [
-  { to: '/virustotal', icon: Bug,         label: 'VirusTotal' },
-  { to: '/cve',        icon: FileWarning, label: 'CVE / NVD' },
-  { to: '/mitre',      icon: Swords,      label: 'MITRE ATT&CK' },
-]
+import { ShieldAlert, Plus, BookOpen, Settings, Shield, Bug, FileWarning, Swords, HelpCircle, LayoutDashboard } from 'lucide-react'
+import { useApp } from '../context/AppContext'
 
 function NavItem({ to, icon: Icon, label }) {
   return (
@@ -31,13 +15,29 @@ function NavItem({ to, icon: Icon, label }) {
 }
 
 export default function Sidebar() {
+  const { t } = useApp()
+
+  const mainNav = [
+    { to: '/dashboard', icon: LayoutDashboard, label: t.dashboard },
+    { to: '/incidents', icon: ShieldAlert,     label: t.incidents },
+    { to: '/submit',    icon: Plus,            label: t.new_incident },
+    { to: '/playbooks', icon: BookOpen,        label: t.playbooks },
+    { to: '/help',      icon: HelpCircle,      label: t.help },
+  ]
+
+  const enrichNav = [
+    { to: '/virustotal', icon: Bug,         label: t.virustotal },
+    { to: '/cve',        icon: FileWarning, label: t.cve_nvd },
+    { to: '/mitre',      icon: Swords,      label: t.mitre_attack },
+  ]
+
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <div className="logo-icon"><Shield size={18} color="#fff" /></div>
+        <div className="logo-icon"><Shield size={20} color="#fff" /></div>
         <div className="logo-text">
-          SOC Platform
-          <span>Multi-Agent AI</span>
+          PouchNexus
+          <span>SOC Multi-Agent platform</span>
         </div>
       </div>
 
@@ -49,7 +49,7 @@ export default function Sidebar() {
         {enrichNav.map(item => <NavItem key={item.to} {...item} />)}
 
         <div className="nav-section-label" style={{ marginTop: 14 }}>System</div>
-        <NavItem to="/settings" icon={Settings} label="Settings" />
+        <NavItem to="/settings" icon={Settings} label={t.settings} />
       </nav>
 
       <div className="sidebar-footer">
@@ -58,7 +58,7 @@ export default function Sidebar() {
           Engine Online
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
-          v2.0 · LangGraph
+          v3.2 · PouchNexus Edition
         </div>
       </div>
     </aside>

@@ -189,7 +189,7 @@ def _run_analysis(incident_id: str, incident_text: str) -> None:
 
 @app.get("/api/health", tags=["system"])
 async def health_check():
-    return {"status": "healthy", "version": "2.0.0"}
+    return {"status": "online", "version": "3.2.0", "engine": "MAA-G8.1"}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
