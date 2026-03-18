@@ -1,0 +1,28 @@
+# docker-compose.yml
+# Run with: docker compose up -d
+# Access: http://localhost:8000  (dashboard + API)
+
+services:
+  soc-platform:
+    build: .
+    container_name: soc-multiagent
+    restart: unless-stopped          # auto-starts when Docker starts (add Docker to Windows startup)
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env                          # your API keys are picked up from here
+    volumes:
+      - ./data:/app/data              # persists TinyDB incidents.json
+      - ./logs:/app/logs              # persists LLM debug logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    # ── Optional: separate lightweight dev mode ───────────────────────────
+    # To run ONLY the API without rebuilding the frontend each time, use:
+    #   docker compose up -d
+    # and develop the frontend separately with:
+    #   cd app/frontend && npm run dev  (port 3000, proxied to 8000)

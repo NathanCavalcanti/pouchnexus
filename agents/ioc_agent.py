@@ -134,13 +134,25 @@ def enrich_with_virustotal(iocs: Dict[str, Any]) -> Dict[str, Any]:
         hashes_checked = 0
         max_hashes = 3
         
-        # Flatten hash list
+        # Deduplicate hashes representing the same file:
+        # Assuming that if a file has multiple hashes, they appear at the same index
+        # in the extracted lists. We prioritize SHA256 > SHA1 > MD5.
+        sha256_list = iocs.get("hashes", {}).get("sha256", [])
+        sha1_list = iocs.get("hashes", {}).get("sha1", [])
+        md5_list = iocs.get("hashes", {}).get("md5", [])
+        
         all_hashes = []
-        for hash_type, hash_list in iocs.get("hashes", {}).items():
-            if isinstance(hash_list, list):
-                all_hashes.extend(hash_list)
+        max_len = max(len(sha256_list), len(sha1_list), len(md5_list)) if iocs.get("hashes") else 0
+        
+        for i in range(max_len):
+            if i < len(sha256_list):
+                all_hashes.append(sha256_list[i])
+            elif i < len(sha1_list):
+                all_hashes.append(sha1_list[i])
+            elif i < len(md5_list):
+                all_hashes.append(md5_list[i])
                 
-        # Remove duplicates
+        # Remove any resulting duplicates
         all_hashes = list(set(all_hashes))
         
         if all_hashes:

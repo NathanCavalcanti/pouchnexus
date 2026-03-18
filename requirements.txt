@@ -2,19 +2,22 @@
 python-dotenv>=1.0.1
 pydantic>=2.9.2
 
-# === LLM / Orquestación ===
+# === LLM / Orchestration ===
 groq>=0.11.0
 google-generativeai>=0.3.2
 langchain>=0.3.0
 langgraph>=0.1.15
 
-# === API ===
+# === API / Server ===
 fastapi>=0.115.0
 uvicorn[standard]>=0.31.0
+python-multipart>=0.0.9
+
+# === Database (lightweight, no server needed) ===
+tinydb>=4.8.0
 
 # === Utils / HTTP ===
 requests>=2.32.3
-tqdm>=4.66.5
 
-# === OSINT / Scraping (si usas un agente OSINT) ===
+# === OSINT / Scraping ===
 beautifulsoup4>=4.12.3

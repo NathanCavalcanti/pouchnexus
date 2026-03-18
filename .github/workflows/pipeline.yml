@@ -1,0 +1,73 @@
+name: SOC Platform V2.0 Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend-quality:
+    name: 🐍 Backend Quality (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff bandit
+          pip install -r requirements.txt
+          
+      - name: Lint with Ruff
+        run: ruff check .
+        
+      - name: Security scan with Bandit
+        run: bandit -r app agents integrations graph -ll
+        
+  frontend-quality:
+    name: ⚛️ Frontend Quality (React)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app/frontend/package-lock.json
+          
+      - name: Install dependencies
+        run: |
+          cd app/frontend
+          npm ci
+          
+      - name: Build Frontend
+        run: |
+          cd app/frontend
+          npm run build
+
+  docker-verify:
+    name: 🐳 Docker Build Verification
+    needs: [backend-quality, frontend-quality]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: actions/setup-buildx-action@v3
+        
+      - name: Build SOC Platform Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: soc-platform:v2.0
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

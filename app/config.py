@@ -5,8 +5,10 @@ import os
 import re
 from typing import Any, Dict, List, Optional
 
+import json
 from dotenv import load_dotenv
 from groq import Groq, GroqError, RateLimitError, APIStatusError
+from app.logger import debug_log
 
 # Load environment variables from .env in project root
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
@@ -99,13 +101,16 @@ def _call_groq(
 ) -> str:
     """Groq LLM call with error handling."""
     try:
+        debug_log(f"=== GROQ API REQUEST ({model}) ===", messages)
         completion = groq_client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
         )
-        return completion.choices[0].message.content or ""
+        content = completion.choices[0].message.content or ""
+        debug_log(f"=== GROQ API RESPONSE ({model}) ===", content)
+        return content
     except RateLimitError as e:
         raise RuntimeError(
             f"LLM_RATE_LIMIT: Groq model usage limit reached "
@@ -152,6 +157,8 @@ def _call_gemini(
         
         # Create model and generate
         model_instance = genai.GenerativeModel(model)
+        debug_log(f"=== GEMINI API REQUEST ({model}) ===", combined_content)
+        
         response = model_instance.generate_content(
             combined_content,
             generation_config=genai.GenerationConfig(
@@ -159,7 +166,7 @@ def _call_gemini(
                 max_output_tokens=max_tokens,
             )
         )
-        
+        debug_log(f"=== GEMINI API RESPONSE ({model}) ===", response.text)
         return response.text
         
     except Exception as e:

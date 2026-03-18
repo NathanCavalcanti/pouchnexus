@@ -2,41 +2,28 @@
 
 ---
 
-# ✔️ Completed (v1.0)
+# ✔️ Completed (v1.0 - v2.0)
 
-- CLI-driven multi-agent SOC assistant
-- Groq Llama 3.3 integration
+- CLI-driven multi-agent SOC assistant (v1.0)
+- **FastAPI HTTP Platform** (v2.0)
+- Groq Llama 3.3 orchestration
 - IOC → MITRE → CVE → DFIR → Report pipeline
 - MITRE ATT&CK validation + offline fallback
 - Real CVE retrieval (NVD API)
-- Report generation (JSON + TXT)
-- Output persistence in /output/
+- **React Web Dashboard** (v2.0)
+- Ingestion webhooks (Wazuh, Snort, Generic)
+- .env configuration via UI
 
 ---
 
-# 🚧 Planned for v1.2
-
-- FastAPI HTTP UI for:
-
-  - Suricata alerts
-  - Wazuh events
-  - n8n automation
-
-- Web dashboard with:
-  - Upload logs
-  - Render PDF reports
-
----
-
-# 🚧 Planned for v1.2
+# 🚧 Future Goals
 
 - Sigma rule suggestion engine
 - Threat actor enrichment using OSINT
 - Malware family classification
-
----
-
-# 🚀 Future Goals
+- PDF Report generation
+- Active Response (Block IP/Isolate Host)
+- Integration with SIEM (Splunk, Sentinel)
 
 - Full SOC automation suite
 - Integration with SIEM (Splunk, Sentinel)

@@ -10,15 +10,19 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+node_modules/
+dist/
+/app/frontend/dist/
+/app/frontend/node_modules/
 
 # Logs
 *.log
 
 # Datos sensibles
-output/
 .env
 .env.*
 !.env.example
+data/
 
 # Archivos temporales
 *.tmp

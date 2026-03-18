@@ -1,0 +1,17 @@
+# .dockerignore
+.venv
+__pycache__
+*.pyc
+*.pyo
+.git
+.github
+.ruff_cache
+.vscode
+output/
+data/
+tests/
+app/frontend/node_modules/
+app/frontend/dist/
+*.md
+Dockerfile
+docker-compose.yml

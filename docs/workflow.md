@@ -12,6 +12,6 @@ graph TD
     E -->|Map TTPs| F[CVE Agent]
     F -->|Fetch Vulnerabilities| G[Investigation Agent]
     G -->|Plan Response| H[Report Agent]
-    H -->|Generate Report| I[Output Files]
-    I -->|JSON & TXT| J[End]
+    H -->|Generate Report| I[Database]
+    I -->|Store incident in TinyDB| J[Dashboard View]
 ```

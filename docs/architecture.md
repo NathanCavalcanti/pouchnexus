@@ -6,10 +6,11 @@ This document provides the full technical architecture of the system.
 
 # 1. Core Architecture
 
-The application is a terminal-based SOC triage system built on:
+The application is a web-based SOC triage platform built on:
 
-- **LangGraph** → deterministic multi-agent workflows
-- **LangChain** → LLM tool abstraction
+- **FastAPI** → Backend API orchestration and database manager
+- **React + Vite** → Real-time frontend dashboard
+- **TinyDB** → Lightweight local database (`data/incidents.json`)
 - **LangGraph** → deterministic multi-agent workflows
 - **LangChain** → LLM tool abstraction
 - **Groq Llama 3.3** → Reasoning & Reporting (Analysis)
@@ -106,22 +107,22 @@ Module: `integrations/virustotal_client.py`
 
 # 4. Output Persistence
 
-Every execution creates:
+Every execution logic creates/updates an incident in:
 
 ```
-output/incident_report_YYYY-MM-DD_HH-MM-SS.json
-output/incident_report_YYYY-MM-DD_HH-MM-SS.txt
+data/incidents.json (TinyDB format)
 ```
 
-Stored as immutable analysis evidence.
+The database stores all raw input data, enrichment status, timelines, and the complete AI generated HTML and Markdown reports.
 
 ---
 
 # 5. Execution Flow
 
-1. User starts CLI
-2. Pastes incident until `END`
-3. The graph runs sequentially
-4. Output printed + saved to disk
+1. User or Integration (webhook) sends incident to FastAPI `POST /api/v1/analyze`
+2. Backend assigns an `incident_id` and adds it to the DB as `analyzing`
+3. A background task runs the LangGraph multi-agent pipeline sequentially
+4. Output is updated in the database as `completed`
+5. The React frontend fetches the status via `GET /api/v1/incidents/ID`
 
 ---
