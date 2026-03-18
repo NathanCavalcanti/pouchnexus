@@ -12,6 +12,7 @@ langgraph>=0.1.15
 fastapi>=0.115.0
 uvicorn[standard]>=0.31.0
 python-multipart>=0.0.9
+slowapi>=0.1.9
 
 # === Database (lightweight, no server needed) ===
 tinydb>=4.8.0

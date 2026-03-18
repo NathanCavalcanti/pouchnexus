@@ -1,12 +1,8 @@
-# app/api.py  (v2 – Web Platform Edition)
-
-from __future__ import annotations
-
-import asyncio
 import re
+import html
 from typing import Any, Dict, List, Optional
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, status
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -14,7 +10,9 @@ from pydantic import BaseModel, Field, validator
 from dotenv import load_dotenv, set_key, dotenv_values
 import os
 
-load_dotenv()
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from graph.graph_builder import create_graph
 from app.database import (
@@ -30,18 +28,23 @@ from app.database import (
     STATUS_FAILED,
 )
 
+load_dotenv()
+
 # ──────────────────────────────────────────────────────────────────────────────
-# App Setup
+# Security & Rate Limiting Setup
 # ──────────────────────────────────────────────────────────────────────────────
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="SOC Multi-Agent Platform API",
     description="Automated security incident analysis with LangGraph multi-agent orchestration",
-    version="2.0.0",
+    version="2.1.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,7 +53,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Serve React Frontend (production build placed in app/frontend/dist/)
@@ -68,11 +70,28 @@ if os.path.isdir(FRONTEND_DIST):
         return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
 
 
+def sanitize_string(v: Any) -> Any:
+    """Helper to clean string inputs: strip, remove null bytes, escape HTML."""
+    if isinstance(v, str):
+        # Remove null bytes and control chars (except newline/tab)
+        v = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", v)
+        v = v.strip()
+        # Escape HTML only if we are displaying raw data in UI without a renderer
+        # (IncidentPanel.jsx renders markdown, so we might want to be careful)
+        # v = html.escape(v) 
+    return v
+
 # ──────────────────────────────────────────────────────────────────────────────
-# Pydantic Models
+# Pydantic Models (with Sanitization)
 # ──────────────────────────────────────────────────────────────────────────────
 
-class ManualIncidentRequest(BaseModel):
+class SanitizedBase(BaseModel):
+    """Base model that automatically sanitizes all string fields."""
+    @validator("*", pre=True)
+    def sanitize_fields(cls, v):
+        return sanitize_string(v)
+
+class ManualIncidentRequest(SanitizedBase):
     incident: str = Field(..., min_length=10, max_length=50000)
     source: str = Field(default="manual")
     severity: str = Field(default="unknown")
@@ -84,7 +103,7 @@ class ManualIncidentRequest(BaseModel):
         return v.strip()
 
 
-class SnortWebhookPayload(BaseModel):
+class SnortWebhookPayload(SanitizedBase):
     """Accept Snort / Suricata alert format."""
     alert: Optional[str] = None
     message: Optional[str] = None
@@ -95,7 +114,7 @@ class SnortWebhookPayload(BaseModel):
     raw: Optional[Dict[str, Any]] = None
 
 
-class WazuhWebhookPayload(BaseModel):
+class WazuhWebhookPayload(SanitizedBase):
     """Accept Wazuh alert format."""
     rule: Optional[Dict[str, Any]] = None
     agent: Optional[Dict[str, Any]] = None
@@ -104,7 +123,7 @@ class WazuhWebhookPayload(BaseModel):
     severity: Optional[str] = "medium"
 
 
-class GenericWebhookPayload(BaseModel):
+class GenericWebhookPayload(SanitizedBase):
     """Flexible JSON for n8n, custom scripts, etc."""
     text: Optional[str] = None
     log: Optional[str] = None
@@ -114,7 +133,6 @@ class GenericWebhookPayload(BaseModel):
     attack_type: Optional[str] = "Log Analysis"
     skip_analysis: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
-
 
 class SettingsKeys(BaseModel):
     """Model for saving API keys via settings."""
@@ -294,7 +312,7 @@ async def _run_lightweight_enrichment(incident_id: str, text: str):
         malicious = vt_ui_result["malicious"]
         total = vt_ui_result["total"]
         
-        report = f"### 🔍 Automated IP Enrichment (No AI Analysis)\n\n"
+        report = "### 🔍 Automated IP Enrichment (No AI Analysis)\n\n"
         report += f"**IP Detected:** {ip}\n"
         report += f"**VT Reputation:** {malicious}/{total} engines flagged this IP.\n"
         report += f"**Country:** {vt_ui_result['country']}\n\n"
@@ -316,8 +334,10 @@ async def _run_lightweight_enrichment(incident_id: str, text: str):
 # ──────────────────────────────────────────────────────────────────────────────
 
 @app.post("/api/v1/analyze", status_code=202, tags=["incidents"])
+@limiter.limit("5/minute")
 async def analyze_incident(
-    request: ManualIncidentRequest,
+    request: Request,
+    payload: ManualIncidentRequest,
     background_tasks: BackgroundTasks,
 ) -> Dict[str, Any]:
     """
@@ -325,11 +345,11 @@ async def analyze_incident(
     Returns immediately with the incident_id so the frontend can poll.
     """
     incident_id = create_incident(
-        raw_text=request.incident,
-        source=request.source,
-        severity=request.severity,
+        raw_text=payload.incident,
+        source=payload.source,
+        severity=payload.severity,
     )
-    background_tasks.add_task(_run_analysis, incident_id, request.incident)
+    background_tasks.add_task(_run_analysis, incident_id, payload.incident)
     return {
         "incident_id": incident_id,
         "status": "pending",
@@ -342,7 +362,8 @@ async def analyze_incident(
 # ──────────────────────────────────────────────────────────────────────────────
 
 @app.post("/api/v1/ingest/snort", status_code=202, tags=["ingestion"])
-async def ingest_snort(payload: SnortWebhookPayload, background_tasks: BackgroundTasks):
+@limiter.limit("60/minute")
+async def ingest_snort(request: Request, payload: SnortWebhookPayload, background_tasks: BackgroundTasks):
     """
     Webhook endpoint for Snort / Suricata JSON alerts.
     Configure Snort to POST to: http://<host>:8000/api/v1/ingest/snort
@@ -373,7 +394,8 @@ async def ingest_snort(payload: SnortWebhookPayload, background_tasks: Backgroun
 
 
 @app.post("/api/v1/ingest/wazuh", status_code=202, tags=["ingestion"])
-async def ingest_wazuh(payload: WazuhWebhookPayload, background_tasks: BackgroundTasks):
+@limiter.limit("60/minute")
+async def ingest_wazuh(request: Request, payload: WazuhWebhookPayload, background_tasks: BackgroundTasks):
     """
     Webhook endpoint for Wazuh alerts.
     In Wazuh Manager, configure a custom integration to POST to this URL.
@@ -404,7 +426,8 @@ async def ingest_wazuh(payload: WazuhWebhookPayload, background_tasks: Backgroun
 
 
 @app.post("/api/v1/ingest/generic", status_code=202, tags=["ingestion"])
-async def ingest_generic(payload: GenericWebhookPayload, background_tasks: BackgroundTasks):
+@limiter.limit("60/minute")
+async def ingest_generic(request: Request, payload: GenericWebhookPayload, background_tasks: BackgroundTasks):
     """
     Flexible webhook for n8n, custom scripts, SIEM exports, etc.
     Accepts any JSON with a 'text', 'log', or 'alert' field.
@@ -432,7 +455,7 @@ async def ingest_generic(payload: GenericWebhookPayload, background_tasks: Backg
 # Enrichment: VirusTotal, CVE (NVD), MITRE ATT&CK
 # ──────────────────────────────────────────────────────────────────────────────
 
-class MitreAnalyzeRequest(BaseModel):
+class MitreAnalyzeRequest(SanitizedBase):
     text: str = Field(..., min_length=10, max_length=20000, description="Event or log text to map to MITRE")
 
 
@@ -503,9 +526,8 @@ async def mitre_analyze(payload: MitreAnalyzeRequest, background_tasks: Backgrou
     """
     AI TTP Mapper: sends text through the MITRE agent (LLM + local DB validation).
     Uses BackgroundTasks so the response is not blocked by the LLM call.
-    Returns a job_id; poll GET /api/v1/enrichment/mitre/analyze/{job_id} for results.
     """
-    import uuid, threading
+    import uuid
     from agents.mitre_agent import run_mitre_agent
 
     job_id = str(uuid.uuid4())

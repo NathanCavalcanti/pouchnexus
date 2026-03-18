@@ -3,9 +3,8 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
-import json
 from dotenv import load_dotenv
 from groq import Groq, GroqError, RateLimitError, APIStatusError
 from app.logger import debug_log
@@ -83,7 +82,7 @@ def call_llm(
         except RuntimeError as e:
             # Fallback to Gemini if Groq fails and Gemini is configured
             if GEMINI_API_KEY and "LLM_RATE_LIMIT" in str(e):
-                print(f"[FALLBACK] Groq rate limit reached. Falling back to Gemini...")
+                print("[FALLBACK] Groq rate limit reached. Falling back to Gemini...")
                 return _call_gemini(messages, GEMINI_MODEL, temperature, max_tokens)
             else:
                 raise

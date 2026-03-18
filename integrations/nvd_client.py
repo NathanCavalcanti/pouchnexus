@@ -33,7 +33,7 @@ def search_cves(
         pub_start_date: Start date for publication date filter (ISO 8601 format: YYYY-MM-DDTHH:MM:SS.000)
         pub_end_date: End date for publication date filter (ISO 8601 format: YYYY-MM-DDTHH:MM:SS.000)
     """
-    from datetime import datetime, timedelta
+    from datetime import datetime
     
     params = {
         "keywordSearch": keyword,

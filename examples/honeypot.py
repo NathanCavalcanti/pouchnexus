@@ -31,11 +31,16 @@ def send_to_soc(attacker_ip, port, flags_str):
     
     # Mapeo de tipo de ataque según banderas TCP
     attack_desc = "Escaneo de Red"
-    if 'S' in flags_str and 'A' not in flags_str: attack_desc = "TCP SYN Scan (Stealth)"
-    elif flags_str == "A": attack_desc = "TCP ACK Scan (Firewall Probe)"
-    elif 'R' in flags_str: attack_desc = "TCP RST Probe"
-    elif 'P' in flags_str: attack_desc = "Data Push (PSH) Attempt"
-    elif 'F' in flags_str: attack_desc = "FIN Scan (Stealth)"
+    if 'S' in flags_str and 'A' not in flags_str:
+        attack_desc = "TCP SYN Scan (Stealth)"
+    elif flags_str == "A":
+        attack_desc = "TCP ACK Scan (Firewall Probe)"
+    elif 'R' in flags_str:
+        attack_desc = "TCP RST Probe"
+    elif 'P' in flags_str:
+        attack_desc = "Data Push (PSH) Attempt"
+    elif 'F' in flags_str:
+        attack_desc = "FIN Scan (Stealth)"
 
     msg = f"🛡️ TRÁFICO SOSPECHOSO: [{flags_str}] detectado desde {attacker_ip} al puerto {port} ({service})."
     
@@ -63,7 +68,7 @@ def packet_callback(pkt):
             send_to_soc(pkt[IP].src, pkt[TCP].dport, str(flags))
 
 def start_sniffer():
-    print(f"[*] Sniffer iniciado en modo promiscuo...")
+    print("[*] Sniffer iniciado en modo promiscuo...")
     sniff(filter="tcp", prn=packet_callback, store=0)
 
 # --- LISTENER DE PUERTOS (Para que los puertos parezcan ABIERTOS) ---
@@ -78,7 +83,8 @@ def port_listener(port, service):
             try:
                 client.send(b"Access Denied. Internal Monitoring Active.\n")
                 client.close()
-            except: pass
+            except Exception:
+                pass
     except Exception as e:
         print(f"[!] Error en listener puerto {port}: {e}")
 

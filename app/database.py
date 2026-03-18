@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional
 
 from tinydb import TinyDB, Query
 from tinydb.storages import JSONStorage
-from tinydb.middlewares import CachingMiddleware
 
 # ── Database path ────────────────────────────────────────────────────────────
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))

@@ -103,12 +103,12 @@ def validate_iocs(iocs: Dict[str, Any]) -> Dict[str, Any]:
                 
                 # Basic length validation (optional but good)
                 # MD5=32, SHA1=40, SHA256=64
-                l = len(h)
-                if hash_type == "md5" and l != 32:
+                hash_len = len(h)
+                if hash_type == "md5" and hash_len != 32:
                     continue
-                if hash_type == "sha1" and l != 40:
+                if hash_type == "sha1" and hash_len != 40:
                     continue
-                if hash_type == "sha256" and l != 64:
+                if hash_type == "sha256" and hash_len != 64:
                     continue
                     
                 valid_hashes.append(h)

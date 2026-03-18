@@ -1,6 +1,5 @@
 import os
 import logging
-import inspect
 from datetime import datetime
 from dotenv import dotenv_values
 
@@ -39,9 +38,9 @@ def debug_log(message: str, data: any = None):
     if not DEBUG_LOGGING_ENABLED:
         return
         
-    caller_frame = inspect.currentframe().f_back
-    filename = os.path.basename(caller_frame.f_code.co_filename)
-    lineno = caller_frame.f_lineno
+    # caller_frame = inspect.currentframe().f_back
+    # Extract linenumber for context (can be added to log if needed)
+    # _lineno = caller_frame.f_lineno
     
     log_msg = f"{message}"
     if data is not None:
@@ -51,7 +50,7 @@ def debug_log(message: str, data: any = None):
             import json
             try:
                 log_msg += f"\n{json.dumps(data, indent=2, default=str)}"
-            except:
+            except Exception:
                 log_msg += f"\n{str(data)}"
                 
     # Modify record dynamically or just build string
