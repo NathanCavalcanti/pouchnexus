@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { ShieldAlert, Plus, BookOpen, Settings, Shield, Bug, FileWarning, Swords, HelpCircle, LayoutDashboard } from 'lucide-react'
+import { ShieldAlert, Plus, BookOpen, Settings, Shield, Bug, FileWarning, Swords, HelpCircle, LayoutDashboard, X } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
-function NavItem({ to, icon: Icon, label }) {
+function NavItem({ to, icon: Icon, label, onClick }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+      onClick={onClick}
     >
       <Icon size={16} />
       {label}
@@ -14,7 +15,7 @@ function NavItem({ to, icon: Icon, label }) {
   )
 }
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const { t } = useApp()
 
   const mainNav = [
@@ -32,24 +33,27 @@ export default function Sidebar() {
   ]
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-logo">
         <div className="logo-icon"><Shield size={20} color="#fff" /></div>
         <div className="logo-text">
           PouchNexus
           <span>SOC Multi-Agent platform</span>
         </div>
+        <button className="btn btn-ghost mobile-only" onClick={onClose} style={{ marginLeft: 'auto', display: 'none' }}>
+           <X size={20} />
+        </button>
       </div>
 
       <nav className="sidebar-nav">
         <div className="nav-section-label">Operations</div>
-        {mainNav.map(item => <NavItem key={item.to} {...item} />)}
+        {mainNav.map(item => <NavItem key={item.to} {...item} onClick={onClose} />)}
 
         <div className="nav-section-label" style={{ marginTop: 14 }}>Enrichment &amp; Intel</div>
-        {enrichNav.map(item => <NavItem key={item.to} {...item} />)}
+        {enrichNav.map(item => <NavItem key={item.to} {...item} onClick={onClose} />)}
 
         <div className="nav-section-label" style={{ marginTop: 14 }}>System</div>
-        <NavItem to="/settings" icon={Settings} label={t.settings} />
+        <NavItem to="/settings" icon={Settings} label={t.settings} onClick={onClose} />
       </nav>
 
       <div className="sidebar-footer">

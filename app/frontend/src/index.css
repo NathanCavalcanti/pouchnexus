@@ -75,14 +75,16 @@ body {
 .app-shell {
   display: flex;
   min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
 }
 
 /* ─── Sidebar ───────────────────────────────────────────────────────────── */
 .sidebar {
   width: 260px;
   flex-shrink: 0;
-  background: rgba(13, 17, 34, 0.4);
-  backdrop-filter: blur(20px) saturate(160%);
+  background: rgba(13, 17, 34, 0.9);
+  backdrop-filter: blur(24px) saturate(180%);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -209,12 +211,14 @@ body {
 
 /* ─── Main content ──────────────────────────────────────────────────────── */
 .main-content {
-  margin-left: 292px; /* 260px sidebar + 16px left + 16px gap */
+  margin-left: 292px;
   padding-right: 16px;
   flex: 1;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: margin-left var(--transition);
+  width: 100%;
 }
 
 .topbar {
@@ -287,6 +291,34 @@ body {
 .page {
   padding: 32px;
   flex: 1;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed;
+    left: -300px;
+    top: 0;
+    bottom: 0;
+    margin: 0;
+    border-radius: 0;
+    width: 280px;
+    transition: left var(--transition);
+  }
+  .sidebar.open {
+    left: 0;
+    box-shadow: 40px 0 100px rgba(0,0,0,0.8);
+  }
+  .main-content {
+    margin-left: 0;
+    padding: 0 8px;
+  }
+  .topbar {
+    margin: 8px;
+    padding: 12px 16px;
+  }
+  .page {
+    padding: 16px 8px;
+  }
 }
 
 /* ─── Dashboard Hero ────────────────────────────────────────────────────── */
@@ -453,9 +485,9 @@ body {
 
 .incident-table th {
   background: rgba(255, 255, 255, 0.02);
-  padding: 16px 24px;
+  padding: 12px 16px;
   text-align: left;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -464,7 +496,7 @@ body {
 }
 
 .incident-table td {
-  padding: 18px 24px;
+  padding: 12px 16px;
   font-size: 13px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   vertical-align: middle;
@@ -1055,4 +1087,90 @@ body {
 }
 .text-accent {
   color: var(--accent);
+}
+
+/* ─── Mobile Incident Cards ─────────────────────────────────────────────── */
+.mobile-cards {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-incident-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-incident-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-incident-card .card-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .incident-table { display: none; }
+  .mobile-cards { display: flex; }
+  
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .hero-banner {
+    height: 180px;
+    padding: 24px;
+  }
+  
+  .hero-content h1 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .topbar-actions .btn span {
+    display: none;
+  }
+  
+  .topbar-actions {
+    gap: 8px;
+  }
+}
+
+/* ─── Density & IT Overrides ───────────────────────────────────────────── */
+.stat-card {
+  padding: 16px;
+  gap: 6px;
+}
+
+.stat-card-value {
+  font-size: 26px;
+}
+
+.stat-card-icon {
+  width: 40px;
+  height: 40px;
+}
+
+@media (max-width: 1024px) {
+  .mobile-menu-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  .sidebar .mobile-only {
+    display: flex !important;
+  }
 }

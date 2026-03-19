@@ -213,63 +213,93 @@ export default function Incidents() {
               <div className="empty-state-title">No incidents found</div>
               <div className="empty-state-sub">Try adjusting the filters or submit a new incident.</div>
             </div>
-          ) : (
-            <table className="incident-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 40 }}>
-                    <input 
-                      type="checkbox" 
-                      onChange={toggleSelectAll} 
-                      checked={incidents.length > 0 && selectedIds.size === incidents.length}
-                    />
-                  </th>
-                  <th>{t.status}</th>
-                  <th>{t.source}</th>
-                  <th>{t.severity}</th>
-                  <th>Attack Type</th>
-                  <th>Log Preview</th>
-                  <th>{t.created}</th>
-                  <th>Updated</th>
-                  <th style={{ width: 50 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {incidents.map((inc, idx) => (
-                  <tr key={inc.id} onClick={() => openDetail(inc.id)} className={selectedIds.has(inc.id) ? 'row-selected' : ''}>
-                    <td>
+                    ) : (
+            <>
+              <table className="incident-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 40 }}>
                       <input 
                         type="checkbox" 
-                        checked={selectedIds.has(inc.id)} 
-                        onChange={(e) => toggleSelectOne(e, inc.id)}
-                        onClick={(e) => e.stopPropagation()}
+                        onChange={toggleSelectAll} 
+                        checked={incidents.length > 0 && selectedIds.size === incidents.length}
                       />
-                    </td>
-                    <td><span className={`badge badge-${inc.status}`}>{inc.status}</span></td>
-                    <td><span className="badge badge-unknown">{inc.source}</span></td>
-                    <td><span className={`sev-${inc.severity ?? 'unknown'}`}>{(inc.severity ?? 'unknown').toUpperCase()}</span></td>
-                    <td><span className={`badge badge-attack ${getAttackClass(inc.attack_type)}`}>{inc.attack_type || 'General'}</span></td>
-                    <td className="mono text-xs text-muted">
-                      <span className="truncate text-sm text-muted" style={{ display: 'block', maxWidth: 340 }}>
-                        {inc.raw_text?.slice(0, 100)}
-                      </span>
-                    </td>
-                    <td className="text-xs text-muted mono">{new Date(inc.created_at).toLocaleString()}</td>
-                    <td className="text-xs text-muted mono">{new Date(inc.updated_at).toLocaleString()}</td>
-                    <td>
-                      <button 
-                        className="btn btn-ghost text-danger" 
-                        style={{ padding: '4px' }}
-                        onClick={(e) => handleDelete(e, inc.id)}
-                        title="Delete incident"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
+                    </th>
+                    <th>{t.status}</th>
+                    <th>{t.source}</th>
+                    <th>{t.severity}</th>
+                    <th>Attack Type</th>
+                    <th>Log Preview</th>
+                    <th>{t.created}</th>
+                    <th>Updated</th>
+                    <th style={{ width: 50 }}></th>
                   </tr>
+                </thead>
+                <tbody>
+                  {incidents.map((inc, idx) => (
+                    <tr key={inc.id} onClick={() => openDetail(inc.id)} className={selectedIds.has(inc.id) ? 'row-selected' : ''}>
+                      <td>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIds.has(inc.id)} 
+                          onChange={(e) => toggleSelectOne(e, inc.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
+                      <td><span className={`badge badge-${inc.status}`}>{inc.status}</span></td>
+                      <td><span className="badge badge-unknown">{inc.source}</span></td>
+                      <td><span className={`sev-${inc.severity ?? 'unknown'}`}>{(inc.severity ?? 'unknown').toUpperCase()}</span></td>
+                      <td><span className={`badge badge-attack ${getAttackClass(inc.attack_type)}`}>{inc.attack_type || 'General'}</span></td>
+                      <td className="mono text-xs text-muted">
+                        <span className="truncate text-sm text-muted" style={{ display: 'block', maxWidth: 340 }}>
+                          {inc.raw_text?.slice(0, 100)}
+                        </span>
+                      </td>
+                      <td className="text-xs text-muted mono">{new Date(inc.created_at).toLocaleString()}</td>
+                      <td className="text-xs text-muted mono">{new Date(inc.updated_at).toLocaleString()}</td>
+                      <td>
+                        <button 
+                          className="btn btn-ghost text-danger" 
+                          style={{ padding: '4px' }}
+                          onClick={(e) => handleDelete(e, inc.id)}
+                          title="Delete incident"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="mobile-cards">
+                {incidents.map(inc => (
+                  <div key={inc.id} className="mobile-incident-card" onClick={() => openDetail(inc.id)}>
+                     <div className="card-header">
+                       <span className={`badge badge-${inc.status}`}>{inc.status}</span>
+                       <span className={`sev-${inc.severity ?? 'unknown'}`}>{(inc.severity ?? 'unknown').toUpperCase()}</span>
+                     </div>
+                     <div className="card-body">
+                       <div style={{ fontWeight: 600, marginBottom: 4 }}>{inc.source} · {inc.attack_type || 'General'}</div>
+                       <div className="truncate mono text-xs">{inc.raw_text}</div>
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                       <span className="text-xs text-muted">{new Date(inc.created_at).toLocaleTimeString()}</span>
+                       <button 
+                         className="btn btn-secondary" 
+                         style={{ padding: '4px 8px', fontSize: 10 }}
+                         onClick={(e) => {
+                           e.stopPropagation()
+                           navigator.clipboard.writeText(inc.raw_text)
+                         }}
+                       >
+                         Copy Raw
+                       </button>
+                     </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
       </div>

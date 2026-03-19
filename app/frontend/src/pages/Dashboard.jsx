@@ -149,28 +149,48 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <table className="incident-table">
-              <thead>
-                <tr>
-                  <th>{t.status}</th>
-                  <th>{t.source}</th>
-                  <th>{t.severity}</th>
-                  <th>{t.preview}</th>
-                  <th>{t.created}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map(inc => (
-                  <tr key={inc.id} onClick={() => navigate('/incidents', { state: { openId: inc.id } })}>
-                    <td><span className={`badge badge-${inc.status}`}>{inc.status}</span></td>
-                    <td><span className="badge badge-unknown">{inc.source}</span></td>
-                    <td><span className={`sev-${inc.severity}`}>{inc.severity?.toUpperCase()}</span></td>
-                    <td><span className="truncate text-sm text-muted">{inc.raw_text?.slice(0, 80)}…</span></td>
-                    <td className="text-xs text-muted mono">{new Date(inc.created_at).toLocaleString()}</td>
+            <>
+              <table className="incident-table">
+                <thead>
+                  <tr>
+                    <th>{t.status}</th>
+                    <th>{t.source}</th>
+                    <th>{t.severity}</th>
+                    <th>{t.preview}</th>
+                    <th>{t.created}</th>
                   </tr>
+                </thead>
+                <tbody>
+                  {recent.map(inc => (
+                    <tr key={inc.id} onClick={() => navigate('/incidents', { state: { openId: inc.id } })}>
+                      <td><span className={`badge badge-${inc.status}`}>{inc.status}</span></td>
+                      <td><span className="badge badge-unknown">{inc.source}</span></td>
+                      <td><span className={`sev-${inc.severity}`}>{inc.severity?.toUpperCase()}</span></td>
+                      <td><span className="truncate text-sm text-muted">{inc.raw_text?.slice(0, 80)}…</span></td>
+                      <td className="text-xs text-muted mono">{new Date(inc.created_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="mobile-cards">
+                {recent.map(inc => (
+                  <div key={inc.id} className="mobile-incident-card" onClick={() => navigate('/incidents', { state: { openId: inc.id } })}>
+                     <div className="card-header">
+                       <span className={`badge badge-${inc.status}`}>{inc.status}</span>
+                       <span className={`sev-${inc.severity ?? 'unknown'}`}>{(inc.severity ?? 'unknown').toUpperCase()}</span>
+                     </div>
+                     <div className="card-body">
+                       <div style={{ fontWeight: 600, marginBottom: 4 }}>{inc.source}</div>
+                       <div className="truncate mono text-xs">{inc.raw_text}</div>
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                       <span className="text-xs text-muted">{new Date(inc.created_at).toLocaleTimeString()}</span>
+                     </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
 
