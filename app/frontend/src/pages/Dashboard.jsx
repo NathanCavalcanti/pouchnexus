@@ -2,10 +2,14 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ShieldAlert, CheckCircle, Clock, XCircle, Inbox, TrendingUp, RefreshCw } from 'lucide-react'
 import { api } from '../api.js'
+import { useApp } from '../context/AppContext'
+import heroBg from '../assets/hero_bg.png'
+import LanguageSelector from '../components/LanguageSelector.jsx'
 
 function StatCard({ icon: Icon, value, label, color, bg }) {
   return (
     <div className="stat-card">
+      <div className="stat-card-glow" style={{ background: color }}></div>
       <div className="stat-card-icon" style={{ background: bg }}>
         <Icon size={20} color={color} />
       </div>
@@ -16,6 +20,7 @@ function StatCard({ icon: Icon, value, label, color, bg }) {
 }
 
 export default function Dashboard() {
+  const { t } = useApp()
   const [stats, setStats]         = useState(null)
   const [recent, setRecent]       = useState([])
   const [loading, setLoading]     = useState(true)
@@ -49,62 +54,71 @@ export default function Dashboard() {
     <>
       <div className="topbar">
         <div>
-          <div className="topbar-title">Dashboard</div>
+          <div className="topbar-title">{t.dashboard}</div>
           <div className="topbar-sub">Real-time SOC operations overview</div>
         </div>
         <div className="topbar-actions">
+          <LanguageSelector />
           <button className="btn btn-secondary" onClick={load} disabled={loading}>
             <RefreshCw size={14} className={loading ? 'spinner' : ''} />
-            Refresh
+            {t.refresh}
           </button>
           <button className="btn btn-primary" onClick={() => navigate('/submit')}>
-            + New Incident
+            + {t.new_incident}
           </button>
         </div>
       </div>
 
       <div className="page">
+        {/* Pro Max Hero */}
+        <div className="hero-banner" style={{ backgroundImage: `linear-gradient(rgba(3, 6, 12, 0.4), rgba(3, 6, 12, 0.8)), url(${heroBg})` }}>
+           <div className="hero-content">
+             <h1>{t.hero_title}</h1>
+             <p>{t.hero_sub}</p>
+           </div>
+        </div>
+
         {/* Stats */}
         <div className="stats-grid">
           <StatCard
             icon={Inbox}
             value={stats?.total}
-            label="Total Incidents"
+            label={t.total_incidents}
             color="var(--accent)"
-            bg="rgba(99,130,255,0.12)"
+            bg="rgba(124,58,237,0.12)"
           />
           <StatCard
             icon={Clock}
             value={(by.pending ?? 0) + (by.analyzing ?? 0)}
-            label="Active / Pending"
+            label={t.active_pending}
             color="var(--warn)"
             bg="rgba(251,191,36,0.1)"
           />
           <StatCard
             icon={CheckCircle}
             value={by.completed ?? 0}
-            label="Completed"
+            label={t.completed}
             color="var(--ok)"
-            bg="rgba(34,211,176,0.1)"
+            bg="rgba(16,185,129,0.1)"
           />
           <StatCard
             icon={XCircle}
             value={by.failed ?? 0}
-            label="Failed"
+            label={t.failed}
             color="var(--danger)"
-            bg="rgba(248,113,113,0.1)"
+            bg="rgba(239,68,68,0.1)"
           />
           <StatCard
             icon={ShieldAlert}
             value={stats?.by_severity?.critical ?? 0}
-            label="Critical Severity"
+            label={t.critical_severity}
             color="#ff4d6d"
             bg="rgba(255,77,109,0.1)"
           />
           <StatCard
             icon={TrendingUp}
             value={stats?.by_severity?.high ?? 0}
-            label="High Severity"
+            label={t.high_severity}
             color="#fb923c"
             bg="rgba(251,146,60,0.1)"
           />
@@ -113,7 +127,7 @@ export default function Dashboard() {
         {/* Recent incidents */}
         <div className="section-header">
           <div>
-            <div className="section-title">Recent Incidents</div>
+            <div className="section-title">{t.recent_incidents}</div>
             <div className="section-sub">Last 8 ingested events</div>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate('/incidents')}>
@@ -138,11 +152,11 @@ export default function Dashboard() {
             <table className="incident-table">
               <thead>
                 <tr>
-                  <th>Status</th>
-                  <th>Source</th>
-                  <th>Severity</th>
-                  <th>Preview</th>
-                  <th>Created</th>
+                  <th>{t.status}</th>
+                  <th>{t.source}</th>
+                  <th>{t.severity}</th>
+                  <th>{t.preview}</th>
+                  <th>{t.created}</th>
                 </tr>
               </thead>
               <tbody>
