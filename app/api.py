@@ -37,7 +37,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="SOC Multi-Agent Platform API",
     description="Automated security incident analysis with LangGraph multi-agent orchestration",
-    version="2.1.0",
+    version="2.2.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
@@ -250,7 +250,7 @@ def _run_analysis(incident_id: str, incident_text: str) -> None:
 
 @app.get("/api/health", tags=["system"])
 async def health_check():
-    return {"status": "online", "version": "3.2.0", "engine": "MAA-G8.1"}
+    return {"status": "online", "version": "2.2.0", "engine": "MAA-G8.1"}
 
 
 # ──────────────────────────────────────────────────────────────────────────────

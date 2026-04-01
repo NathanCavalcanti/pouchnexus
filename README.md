@@ -3,17 +3,22 @@
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
 ![LangGraph](https://img.shields.io/badge/LangGraph-0.1.15+-green.svg)
 ![React](https://img.shields.io/badge/React-18+-61DAFB.svg)
-![Status](https://img.shields.io/badge/v3.2.0-Pro_Max_Redesign-success.svg)
+![Status](https://img.shields.io/badge/v2.2.0-Security_Hardened-success.svg)
 
 A professional, web-based **Security Operations Center (SOC) Multi-Agent AI Assistant**. **PouchNexus** orchestrates specialized AI agents using **LangGraph** to automate incident triage, enrichment, and reporting.
 
 ---
 
-## ✨ New in V2.1 (Security & Quality)
+## ✨ New in V2.2 (Security Hardening)
 
-- 🔒 **API Rate Limiting**: Protection against flooding on ingestion (`60 req/min`) and AI analysis (`5 req/min`) using `Slowapi`.
-- 🧹 **Input Sanitization**: Automatic cleaning of all incoming logs and manual inputs via Pydantic base validators.
-- ✅ **Code Quality**: 100% compliant with **Ruff** linting standards for professional backend performance.
+- 🔒 **Full Rate Limiting Coverage**: All 19 API endpoints now protected with calibrated limits via `slowapi`.
+- 🛡️ **Input Validation**: Strict regex validation on route params (`file_hash`, `ip`, `domain`, `technique_id`, `incident_id`).
+- 🔑 **API Key Masking**: `GET /settings/keys` now returns masked keys (`xxxx***yyyy`) — never exposes secrets.
+- 🌐 **CORS Hardening**: `ALLOWED_ORIGINS` env var support; `allow_credentials` disabled with wildcard origins.
+- 🧹 **Error Sanitization**: Internal stack traces no longer leak via HTTP responses or stored DB errors.
+- 📦 **Pydantic URL Model**: `POST /virustotal/url` replaced `Dict[str,str]` with typed `VtUrlRequest` model.
+- 🗑️ **Bulk Delete Cap**: `bulk-delete` limited to 500 IDs per request to prevent accidental data loss.
+- 🧠 **Memory Guard**: `_mitre_jobs` in-memory store auto-evicts at 500 entries to prevent unbounded growth.
 - 🛡️ **Honeypot V8.1**: Advanced TCP Multi-Flag detection (SYN, ACK, RST, PSH, FIN) included in `examples/`.
 
 ---
@@ -86,5 +91,5 @@ Automated via GitHub Actions:
 - **Security**: Bandit security scanning.
 - **Docker**: Automated container builds.
 
-**Version**: 3.2.0 | **Status**: Production-Ready Security Assistant (PouchNexus)
+**Version**: 2.2.0 | **Status**: Production-Ready Security Assistant (PouchNexus)
 **License**: MIT
