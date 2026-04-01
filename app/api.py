@@ -45,10 +45,20 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# ALLOWED_ORIGINS: comma-separated list of allowed origins.
+# e.g. "http://localhost:3000,https://soc.example.com"
+# If unset, defaults to wildcard "*" (dev only). Credentials require explicit origins.
+_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")
+    if o.strip()
+] or ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_ALLOWED_ORIGINS,
+    # allow_credentials requires specific origins — never combine with wildcard
+    allow_credentials=_ALLOWED_ORIGINS != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -83,6 +93,45 @@ def sanitize_string(v: Any) -> Any:
         # (IncidentPanel.jsx renders markdown, so we might want to be careful)
         # v = html.escape(v)
     return v
+
+
+def _mask_key(value: str) -> str:
+    """Masks an API key for safe display: shows first 4 and last 4 chars only."""
+    if not value or len(value) < 9:
+        return "***" if value else ""
+    return f"{value[:4]}***{value[-4:]}"
+
+
+def _sanitize_error(exc: Exception) -> str:
+    """Returns a safe, truncated error message stripped of control characters."""
+    msg = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", str(exc))
+    return msg[:500]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Input Validation Regexes (route parameters)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# MD5 (32), SHA1 (40), SHA256 (64) hex strings
+_HASH_RE = re.compile(r"^[0-9a-fA-F]{32}$|^[0-9a-fA-F]{40}$|^[0-9a-fA-F]{64}$")
+
+# IPv4 with octet range check
+_IPV4_RE = re.compile(
+    r"^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$"
+)
+
+# Domain: labels separated by dots, each 1-63 chars, TLD at least 2 chars
+_DOMAIN_RE = re.compile(
+    r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
+)
+
+# MITRE ATT&CK technique ID: T#### or T####.###
+_TECHNIQUE_RE = re.compile(r"^T\d{4}(\.\d{3})?$")
+
+# UUID v4
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -155,6 +204,18 @@ class SettingsKeys(BaseModel):
     debug_logging: Optional[bool] = None
 
 
+class VtUrlRequest(SanitizedBase):
+    """Request model for VirusTotal URL scanning."""
+
+    url: str = Field(..., min_length=7, max_length=2048)
+
+    @validator("url")
+    def validate_url_format(cls, v):
+        if not re.match(r"^https?://", v, re.IGNORECASE):
+            raise ValueError("URL must start with http:// or https://")
+        return v
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Background task
 # ──────────────────────────────────────────────────────────────────────────────
@@ -179,7 +240,7 @@ def _run_analysis(incident_id: str, incident_text: str) -> None:
             },
         )
     except Exception as exc:
-        update_incident(incident_id, {"status": STATUS_FAILED, "error": str(exc)})
+        update_incident(incident_id, {"status": STATUS_FAILED, "error": _sanitize_error(exc)})
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -198,7 +259,8 @@ async def health_check():
 
 
 @app.get("/api/v1/stats", tags=["dashboard"])
-async def dashboard_stats():
+@limiter.limit("60/minute")
+async def dashboard_stats(request: Request):
     """Returns aggregate metrics for the dashboard cards."""
     return get_stats()
 
@@ -209,26 +271,29 @@ async def dashboard_stats():
 
 
 @app.get("/api/v1/settings/keys", tags=["settings"])
-async def get_keys():
-    """Returns current keys from .env without masking so they can be edited."""
+@limiter.limit("10/minute")
+async def get_keys(request: Request):
+    """Returns current keys from .env with partial masking for security."""
     env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
     env_vars = dotenv_values(env_path)
     return {
-        "groq": env_vars.get("GROQ_API_KEY", ""),
-        "gemini": env_vars.get("GEMINI_API_KEY", ""),
-        "nvd": env_vars.get("NVD_API_KEY", ""),
-        "virustotal": env_vars.get("VIRUSTOTAL_API_KEY", ""),
+        "groq": _mask_key(env_vars.get("GROQ_API_KEY", "")),
+        "gemini": _mask_key(env_vars.get("GEMINI_API_KEY", "")),
+        "nvd": _mask_key(env_vars.get("NVD_API_KEY", "")),
+        "virustotal": _mask_key(env_vars.get("VIRUSTOTAL_API_KEY", "")),
         "debug_logging": env_vars.get("DEBUG_LOGGING_ENABLED", "false").lower()
         == "true",
     }
 
 
 @app.post("/api/v1/settings/keys", tags=["settings"])
-async def update_keys(keys: SettingsKeys):
+@limiter.limit("5/minute")
+async def update_keys(request: Request, keys: SettingsKeys):
     """Updates the .env file with the provided keys."""
     env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
     if not os.path.exists(env_path):
-        open(env_path, "a").close()
+        with open(env_path, "a"):
+            pass
 
     if keys.groq is not None:
         set_key(env_path, "GROQ_API_KEY", keys.groq)
@@ -252,7 +317,9 @@ async def update_keys(keys: SettingsKeys):
 
 
 @app.get("/api/v1/incidents", tags=["incidents"])
+@limiter.limit("60/minute")
 async def list_incidents_endpoint(
+    request: Request,
     limit: int = Query(50, ge=1, le=5000),
     status_filter: Optional[str] = Query(None, alias="status"),
     source_filter: Optional[str] = Query(None, alias="source"),
@@ -268,8 +335,11 @@ async def list_incidents_endpoint(
 
 
 @app.get("/api/v1/incidents/{incident_id}", tags=["incidents"])
-async def get_incident_endpoint(incident_id: str) -> Dict[str, Any]:
+@limiter.limit("120/minute")
+async def get_incident_endpoint(request: Request, incident_id: str) -> Dict[str, Any]:
     """Returns the full detail of one incident including analysis results."""
+    if not _UUID_RE.match(incident_id):
+        raise HTTPException(status_code=400, detail="Invalid incident ID format")
     record = get_incident(incident_id)
     if not record:
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -281,8 +351,11 @@ async def get_incident_endpoint(incident_id: str) -> Dict[str, Any]:
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["incidents"],
 )
-async def delete_incident_endpoint(incident_id: str):
+@limiter.limit("30/minute")
+async def delete_incident_endpoint(request: Request, incident_id: str):
     """Deletes an incident by ID."""
+    if not _UUID_RE.match(incident_id):
+        raise HTTPException(status_code=400, detail="Invalid incident ID format")
     success = delete_incident(incident_id)
     if not success:
         raise HTTPException(
@@ -294,9 +367,16 @@ async def delete_incident_endpoint(incident_id: str):
 class BulkDeleteRequest(BaseModel):
     ids: List[str]
 
+    @validator("ids")
+    def validate_ids_limit(cls, v):
+        if len(v) > 500:
+            raise ValueError("Cannot delete more than 500 incidents at once")
+        return v
+
 
 @app.post("/api/v1/incidents/bulk-delete", tags=["incidents"])
-async def delete_incidents_bulk_endpoint(req: BulkDeleteRequest):
+@limiter.limit("10/minute")
+async def delete_incidents_bulk_endpoint(request: Request, req: BulkDeleteRequest):
     """Deletes multiple incidents at once."""
     if not req.ids:
         return {"count": 0, "message": "No IDs provided"}
@@ -501,6 +581,10 @@ async def ingest_generic(
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+# In-memory store for async MITRE analysis jobs (lightweight, no DB needed)
+_mitre_jobs: Dict[str, Any] = {}
+
+
 class MitreAnalyzeRequest(SanitizedBase):
     text: str = Field(
         ...,
@@ -511,42 +595,54 @@ class MitreAnalyzeRequest(SanitizedBase):
 
 
 @app.get("/api/v1/enrichment/virustotal/hash/{file_hash}", tags=["enrichment"])
-async def vt_hash(file_hash: str):
+@limiter.limit("20/minute")
+async def vt_hash(request: Request, file_hash: str):
     """Query VirusTotal for a file hash (MD5, SHA1, SHA256)."""
+    if not _HASH_RE.match(file_hash):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid hash format (expected MD5/SHA1/SHA256 hex string)",
+        )
     from integrations.virustotal_client import get_file_report
 
     return get_file_report(file_hash)
 
 
 @app.get("/api/v1/enrichment/virustotal/ip/{ip}", tags=["enrichment"])
-async def vt_ip(ip: str):
+@limiter.limit("20/minute")
+async def vt_ip(request: Request, ip: str):
     """Query VirusTotal for an IP address reputation."""
+    if not _IPV4_RE.match(ip):
+        raise HTTPException(status_code=400, detail="Invalid IPv4 address format")
     from integrations.virustotal_client import get_ip_report
 
     return get_ip_report(ip)
 
 
 @app.get("/api/v1/enrichment/virustotal/domain/{domain}", tags=["enrichment"])
-async def vt_domain(domain: str):
+@limiter.limit("20/minute")
+async def vt_domain(request: Request, domain: str):
     """Query VirusTotal for a domain reputation."""
+    if not _DOMAIN_RE.match(domain):
+        raise HTTPException(status_code=400, detail="Invalid domain format")
     from integrations.virustotal_client import get_domain_report
 
     return get_domain_report(domain)
 
 
 @app.post("/api/v1/enrichment/virustotal/url", tags=["enrichment"])
-async def vt_url(payload: Dict[str, str]):
+@limiter.limit("10/minute")
+async def vt_url(request: Request, payload: VtUrlRequest):
     """Scan a URL with VirusTotal."""
     from integrations.virustotal_client import scan_url
 
-    url = payload.get("url", "")
-    if not url:
-        raise HTTPException(status_code=400, detail="url field required")
-    return scan_url(url)
+    return scan_url(payload.url)
 
 
 @app.get("/api/v1/enrichment/cve", tags=["enrichment"])
+@limiter.limit("30/minute")
 async def search_cve(
+    request: Request,
     q: str = Query(..., min_length=2, description="CVE ID or keyword"),
 ):
     """
@@ -558,13 +654,19 @@ async def search_cve(
     try:
         results = search_cves(keyword=q, max_results=10)
         return {"query": q, "results": results}
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=502, detail="Upstream CVE lookup failed")
 
 
 @app.get("/api/v1/enrichment/mitre/{technique_id}", tags=["enrichment"])
-async def lookup_mitre(technique_id: str):
+@limiter.limit("30/minute")
+async def lookup_mitre(request: Request, technique_id: str):
     """Lookup a single MITRE ATT&CK technique by ID (e.g. T1059.001)."""
+    if not _TECHNIQUE_RE.match(technique_id.upper()):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid MITRE technique ID (expected e.g. T1059 or T1059.001)",
+        )
     from integrations.mitre_local_db import get_technique_by_id
 
     result = get_technique_by_id(technique_id.upper())
@@ -584,8 +686,9 @@ async def lookup_mitre(technique_id: str):
 
 
 @app.post("/api/v1/enrichment/mitre/analyze", tags=["enrichment"])
+@limiter.limit("5/minute")
 async def mitre_analyze(
-    payload: MitreAnalyzeRequest, background_tasks: BackgroundTasks
+    request: Request, payload: MitreAnalyzeRequest, background_tasks: BackgroundTasks
 ):
     """
     AI TTP Mapper: sends text through the MITRE agent (LLM + local DB validation).
@@ -593,6 +696,12 @@ async def mitre_analyze(
     """
     import uuid
     from agents.mitre_agent import run_mitre_agent
+
+    # Evict oldest entries to prevent unbounded memory growth
+    if len(_mitre_jobs) >= 500:
+        oldest_keys = list(_mitre_jobs.keys())[:250]
+        for k in oldest_keys:
+            del _mitre_jobs[k]
 
     job_id = str(uuid.uuid4())
     _mitre_jobs[job_id] = {"status": "analyzing", "result": None}
@@ -602,18 +711,19 @@ async def mitre_analyze(
             result = run_mitre_agent(incident_text=payload.text)
             _mitre_jobs[job_id] = {"status": "completed", "result": result}
         except Exception as e:
-            _mitre_jobs[job_id] = {"status": "failed", "result": None, "error": str(e)}
+            _mitre_jobs[job_id] = {
+                "status": "failed",
+                "result": None,
+                "error": _sanitize_error(e),
+            }
 
     background_tasks.add_task(_run)
     return {"job_id": job_id, "status": "analyzing"}
 
 
-# In-memory store for async MITRE analysis jobs (lightweight, no DB needed)
-_mitre_jobs: Dict[str, Any] = {}
-
-
 @app.get("/api/v1/enrichment/mitre/analyze/{job_id}", tags=["enrichment"])
-async def mitre_analyze_result(job_id: str):
+@limiter.limit("60/minute")
+async def mitre_analyze_result(request: Request, job_id: str):
     """Poll the result of an AI TTP Mapper job."""
     job = _mitre_jobs.get(job_id)
     if not job:

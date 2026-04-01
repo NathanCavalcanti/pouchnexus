@@ -99,9 +99,9 @@ def get_file_report(file_hash: str) -> Dict[str, Any]:
             "signature_description": signature_info,
         }
 
-    except Exception as e:
+    except Exception:
         return {
-            "error": str(e),
+            "error": "VirusTotal request failed",
             "malicious_count": 0,
             "total_engines": 0,
             "permalink": "",
@@ -196,9 +196,9 @@ def scan_url(url: str) -> Dict[str, Any]:
             else "",
         }
 
-    except Exception as e:
+    except Exception:
         return {
-            "error": str(e),
+            "error": "VirusTotal request failed",
             "malicious_count": 0,
             "total_engines": 0,
             "permalink": "",
@@ -286,9 +286,9 @@ def get_ip_report(ip: str) -> Dict[str, Any]:
             "permalink": f"https://www.virustotal.com/gui/ip-address/{ip}",
         }
 
-    except Exception as e:
+    except Exception:
         return {
-            "error": str(e),
+            "error": "VirusTotal request failed",
             "malicious_count": 0,
             "total_engines": 0,
             "reputation": 0,
@@ -377,9 +377,9 @@ def get_domain_report(domain: str) -> Dict[str, Any]:
             "permalink": f"https://www.virustotal.com/gui/domain/{domain}",
         }
 
-    except Exception as e:
+    except Exception:
         return {
-            "error": str(e),
+            "error": "VirusTotal request failed",
             "malicious_count": 0,
             "total_engines": 0,
             "categories": [],
