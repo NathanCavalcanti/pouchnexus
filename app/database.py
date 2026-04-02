@@ -1,25 +1,27 @@
 # app/database.py
 """
-Lightweight persistence layer for the SOC Multi-Agent platform.
-Uses TinyDB to store incident records and analysis results.
-No external DB server required - just a local JSON file.
+Persistence layer for the SOC Multi-Agent platform.
+Uses Supabase (PostgreSQL) for cloud-hosted, scalable storage.
+
+Setup:
+  1. Create a Supabase project at https://supabase.com
+  2. Run migrations/supabase/001_create_incidents.sql in the SQL Editor
+  3. Set SUPABASE_URL and SUPABASE_KEY in your .env file
 """
 
 from __future__ import annotations
 
+import json
 import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from tinydb import TinyDB, Query
-from tinydb.storages import JSONStorage
+from dotenv import load_dotenv
+from supabase import create_client, Client
 
-# ── Database path ────────────────────────────────────────────────────────────
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
-DATA_DIR = os.path.join(PROJECT_ROOT, "data")
-os.makedirs(DATA_DIR, exist_ok=True)
-DB_PATH = os.path.join(DATA_DIR, "incidents.json")
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 # ── Status constants ─────────────────────────────────────────────────────────
 STATUS_PENDING = "pending"
@@ -27,22 +29,39 @@ STATUS_ANALYZING = "analyzing"
 STATUS_COMPLETED = "completed"
 STATUS_FAILED = "failed"
 
-# ── DB instance (lazy-loaded singleton) ─────────────────────────────────────
-_db: Optional[TinyDB] = None
+_TABLE = "incidents"
+
+# ── Supabase client (lazy singleton) ─────────────────────────────────────────
+_supabase: Optional[Client] = None
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError(
+        "SUPABASE_URL and SUPABASE_KEY are required. "
+        "Add them to your .env file. "
+        "Get them from: Supabase Dashboard → Project Settings → API"
+    )
 
 
-def get_db() -> TinyDB:
-    global _db
-    if _db is None:
-        # We use direct JSONStorage instead of CachingMiddleware to ensure
-        # that every write (insert/update) is immediately flushed to disk.
-        # This prevents data loss during server reloads or forced shutdowns.
-        _db = TinyDB(DB_PATH, storage=JSONStorage)
-    return _db
+def get_client() -> Client:
+    global _supabase
+    if _supabase is None:
+        _supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _supabase
 
 
-def get_incidents_table():
-    return get_db().table("incidents")
+def _serialize_jsonb(value: Any) -> Any:
+    """Ensure JSONB columns receive a dict/list or None, never raw strings."""
+    if value is None or isinstance(value, (dict, list)):
+        return value
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            return {"raw": value}
+    return value
 
 
 # ── CRUD helpers ─────────────────────────────────────────────────────────────
@@ -60,9 +79,9 @@ def create_incident(
 
     record = {
         "id": incident_id,
-        "source": source,  # "manual" | "webhook_snort" | "webhook_wazuh" | "n8n" …
-        "severity": severity,  # "critical" | "high" | "medium" | "low" | "unknown"
-        "attack_type": attack_type,  # e.g., "Log Analysis", "Phishing", "Malware"
+        "source": source,
+        "severity": severity,
+        "attack_type": attack_type,
         "status": STATUS_PENDING,
         "created_at": now,
         "updated_at": now,
@@ -76,37 +95,44 @@ def create_incident(
         "error": None,
     }
 
-    get_incidents_table().insert(record)
+    get_client().table(_TABLE).insert(record).execute()
     return incident_id
 
 
 def update_incident(incident_id: str, updates: Dict[str, Any]) -> bool:
     """Updates fields of an existing incident."""
-    Incident = Query()
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    result = get_incidents_table().update(updates, Incident.id == incident_id)
-    return len(result) > 0
+    for jsonb_col in ("iocs", "ttps", "cves", "report"):
+        if jsonb_col in updates:
+            updates[jsonb_col] = _serialize_jsonb(updates[jsonb_col])
+    response = (
+        get_client().table(_TABLE).update(updates).eq("id", incident_id).execute()
+    )
+    return len(response.data) > 0
 
 
 def get_incident(incident_id: str) -> Optional[Dict[str, Any]]:
     """Returns a single incident by ID or None."""
-    Incident = Query()
-    results = get_incidents_table().search(Incident.id == incident_id)
-    return results[0] if results else None
+    response = (
+        get_client().table(_TABLE).select("*").eq("id", incident_id).execute()
+    )
+    return response.data[0] if response.data else None
 
 
 def delete_incident(incident_id: str) -> bool:
     """Deletes an incident by ID. Returns True if deleted."""
-    Incident = Query()
-    removed = get_incidents_table().remove(Incident.id == incident_id)
-    return len(removed) > 0
+    response = (
+        get_client().table(_TABLE).delete().eq("id", incident_id).execute()
+    )
+    return len(response.data) > 0
 
 
 def delete_incidents_bulk(incident_ids: List[str]) -> int:
     """Deletes multiple incidents. Returns count of removed items."""
-    Incident = Query()
-    removed = get_incidents_table().remove(Incident.id.one_of(incident_ids))
-    return len(removed)
+    response = (
+        get_client().table(_TABLE).delete().in_("id", incident_ids).execute()
+    )
+    return len(response.data)
 
 
 def list_incidents(
@@ -116,33 +142,32 @@ def list_incidents(
     attack_type: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Returns incidents ordered by newest first with optional filters."""
-    table = get_incidents_table()
-    Incident = Query()
-
-    # Dynamic query building
-    query = None
+    query = (
+        get_client()
+        .table(_TABLE)
+        .select("*")
+        .order("created_at", desc=True)
+        .limit(limit)
+    )
     if status:
-        query = Incident.status == status
+        query = query.eq("status", status)
     if source:
-        q_source = Incident.source == source
-        query = (query & q_source) if query else q_source
+        query = query.eq("source", source)
     if attack_type:
-        q_attack = Incident.attack_type == attack_type
-        query = (query & q_attack) if query else q_attack
-
-    if query:
-        records = table.search(query)
-    else:
-        records = table.all()
-
-    # Sort newest first
-    records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
-    return records[:limit]
+        query = query.eq("attack_type", attack_type)
+    response = query.execute()
+    return response.data or []
 
 
 def get_stats() -> Dict[str, Any]:
     """Returns summary statistics for the dashboard."""
-    all_records = get_incidents_table().all()
+    response = (
+        get_client()
+        .table(_TABLE)
+        .select("status, severity, source")
+        .execute()
+    )
+    all_records = response.data or []
     total = len(all_records)
     by_status = {
         STATUS_PENDING: 0,
@@ -157,11 +182,9 @@ def get_stats() -> Dict[str, Any]:
         s = rec.get("status", STATUS_PENDING)
         if s in by_status:
             by_status[s] += 1
-
         sev = rec.get("severity", "unknown")
         if sev in by_severity:
             by_severity[sev] += 1
-
         src = rec.get("source", "manual")
         by_source[src] = by_source.get(src, 0) + 1
 

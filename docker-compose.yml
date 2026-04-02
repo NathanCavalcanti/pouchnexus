@@ -6,14 +6,13 @@ services:
   soc-platform:
     build: .
     container_name: soc-multiagent
-    restart: unless-stopped          # auto-starts when Docker starts (add Docker to Windows startup)
+    restart: unless-stopped # auto-starts when Docker starts (add Docker to Windows startup)
     ports:
       - "8000:8000"
     env_file:
-      - .env                          # your API keys are picked up from here
+      - .env # your API keys are picked up from here
     volumes:
-      - ./data:/app/data              # persists TinyDB incidents.json
-      - ./logs:/app/logs              # persists LLM debug logs
+      - ./logs:/app/logs # persists LLM debug logs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s

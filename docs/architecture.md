@@ -10,7 +10,7 @@ The application is a web-based SOC triage platform built on:
 
 - **FastAPI** → Backend API orchestration and database manager
 - **React + Vite** → Real-time frontend dashboard
-- **TinyDB** → Lightweight local database (`data/incidents.json`)
+- **Supabase** → PostgreSQL cloud database (hosted at supabase.com)
 - **LangGraph** → deterministic multi-agent workflows
 - **LangChain** → LLM tool abstraction
 - **Groq Llama 3.3** → Reasoning & Reporting (Analysis)
@@ -110,7 +110,7 @@ Module: `integrations/virustotal_client.py`
 Every execution logic creates/updates an incident in:
 
 ```
-data/incidents.json (TinyDB format)
+Supabase PostgreSQL — table: incidents
 ```
 
 The database stores all raw input data, enrichment status, timelines, and the complete AI generated HTML and Markdown reports.

@@ -28,8 +28,8 @@ COPY . .
 # Copy built frontend into the location FastAPI will serve it from
 COPY --from=frontend-build /build/frontend/dist /app/app/frontend/dist
 
-# Create logs and data dirs
-RUN mkdir -p /app/logs /app/data
+# Create logs dir
+RUN mkdir -p /app/logs
 
 EXPOSE 8000
 

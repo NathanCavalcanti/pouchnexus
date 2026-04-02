@@ -23,7 +23,8 @@ dist/
 .env
 .env.*
 !.env.example
-data/
+data/incidents.json
+migrations/
 
 # Archivos temporales
 *.tmp

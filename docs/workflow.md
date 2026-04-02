@@ -13,5 +13,5 @@ graph TD
     F -->|Fetch Vulnerabilities| G[Investigation Agent]
     G -->|Plan Response| H[Report Agent]
     H -->|Generate Report| I[Database]
-    I -->|Store incident in TinyDB| J[Dashboard View]
+    I -->|Store incident in Supabase| J[Dashboard View]
 ```

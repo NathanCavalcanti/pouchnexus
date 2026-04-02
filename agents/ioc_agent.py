@@ -22,13 +22,15 @@ def run_ioc_agent(incident_text: str) -> Dict[str, Any]:
 
     system_prompt = (
         "You are a SOC analyst specializing in IOC extraction. "
-        "Your task is to read the incident description and extract indicators of compromise "
-        "(IPs, domains, URLs, emails, malware hashes, file paths) "
-        "into a valid JSON format.\n\n"
+        "Your task is to read the incident description and extract ALL indicators of compromise "
+        "and network context into a valid JSON format.\n\n"
         "IMPORTANT RULES:\n"
         "- Do NOT extract memory addresses (e.g., 0x...) as hashes.\n"
         "- Do NOT extract usernames (e.g., 'john.doe') as emails. Emails MUST contain '@' and a domain.\n"
-        "- Only extract valid IPv4 or IPv6 addresses."
+        "- Only extract valid IPv4 or IPv6 addresses.\n"
+        "- Extract BOTH source and destination IPs.\n"
+        "- Extract targeted usernames, protocols, and ports from log entries.\n"
+        "- Count failed and successful authentication attempts separately."
     )
 
     user_prompt = f"""
@@ -40,6 +42,7 @@ Return ONLY a valid JSON with the following structure:
 
 {{
   "ips": ["1.2.3.4", ...],
+  "destination_ips": ["192.168.1.10", ...],
   "domains": ["example.com", ...],
   "urls": ["http://example.com/malware.exe", ...],
   "emails": ["user@example.com", ...],
@@ -48,7 +51,18 @@ Return ONLY a valid JSON with the following structure:
     "sha1": ["..."],
     "sha256": ["..."]
   }},
-  "file_paths": ["C:\\\\Windows\\\\System32\\\\...", "/tmp/malicious", ...]
+  "file_paths": ["C:\\\\Windows\\\\System32\\\\...", "/tmp/malicious", ...],
+  "network_context": {{
+    "protocols": ["ssh", "http", ...],
+    "ports": [22, 53422, ...],
+    "targeted_usernames": ["root", "admin", ...]
+  }},
+  "auth_summary": {{
+    "failed_attempts": 0,
+    "successful_attempts": 0,
+    "total_events": 0,
+    "attack_window_seconds": 0
+  }}
 }}
 """
 

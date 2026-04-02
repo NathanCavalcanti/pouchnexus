@@ -14,8 +14,8 @@ uvicorn[standard]>=0.31.0
 python-multipart>=0.0.9
 slowapi>=0.1.9
 
-# === Database (lightweight, no server needed) ===
-tinydb>=4.8.0
+# === Database (Supabase / PostgreSQL) ===
+supabase>=2.10.0
 
 # === Utils / HTTP ===
 requests>=2.32.3
